@@ -2,28 +2,34 @@ package com.locudroids.app.ui
 
 import android.app.Application
 import android.content.ComponentName
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.locudroids.app.ai.BreakKind
 import com.locudroids.app.ai.DjWriter
 import com.locudroids.app.ai.SongInfo
+import com.locudroids.app.data.ArtLoader
+import com.locudroids.app.data.BrowserState
 import com.locudroids.app.data.DjSettings
+import com.locudroids.app.data.Folders
 import com.locudroids.app.data.MusicLibrary
 import com.locudroids.app.data.SettingsRepository
 import com.locudroids.app.data.Song
 import com.locudroids.app.player.DjBus
 import com.locudroids.app.player.PlaybackService
 import com.locudroids.app.player.Speaker
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -34,6 +40,7 @@ import kotlinx.coroutines.launch
 data class PlaybackUi(
     val connected: Boolean = false,
     val playWhenReady: Boolean = false,
+    val isPlaying: Boolean = false,
     val mediaId: String? = null,
     val title: String? = null,
     val artist: String? = null,
@@ -53,8 +60,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
 
+    private val _browsePath = MutableStateFlow<String?>(null)
+
+    /** Carpeta que se está viendo en el explorador. */
+    val browser: StateFlow<BrowserState> = combine(_songs, _browsePath) { songs, path ->
+        Folders.build(songs, path)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, BrowserState())
+
     private val _ui = MutableStateFlow(PlaybackUi())
     val ui: StateFlow<PlaybackUi> = _ui.asStateFlow()
+
+    private val _artwork = MutableStateFlow<ImageBitmap?>(null)
+    val artwork: StateFlow<ImageBitmap?> = _artwork.asStateFlow()
 
     private val _testStatus = MutableStateFlow<String?>(null)
     val testStatus: StateFlow<String?> = _testStatus.asStateFlow()
@@ -63,7 +80,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val djLine: StateFlow<String?> = DjBus.lastLine
 
     private var controller: MediaController? = null
-    private var items: List<MediaItem> = emptyList()
+    private var artJob: Job? = null
+    private var artFor: String? = null
 
     private val testWriter by lazy { DjWriter() }
     private val testSpeaker by lazy { Speaker(app) }
@@ -74,9 +92,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun connect() {
         viewModelScope.launch {
-            val app = getApplication<Application>()
-            val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
-            val c = MediaController.Builder(app, token).buildAsync().await()
+            val application = getApplication<Application>()
+            val token = SessionToken(application, ComponentName(application, PlaybackService::class.java))
+            val c = MediaController.Builder(application, token).buildAsync().await()
             controller = c
             c.addListener(object : Player.Listener {
                 override fun onEvents(player: Player, events: Player.Events) {
@@ -95,34 +113,74 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun refresh(player: Player) {
         val duration = player.duration
+        val mediaId = player.currentMediaItem?.mediaId
         _ui.value = PlaybackUi(
             connected = true,
             playWhenReady = player.playWhenReady,
-            mediaId = player.currentMediaItem?.mediaId,
+            isPlaying = player.isPlaying,
+            mediaId = mediaId,
             title = player.mediaMetadata.title?.toString(),
             artist = player.mediaMetadata.artist?.toString(),
             positionMs = player.currentPosition.coerceAtLeast(0L),
             durationMs = if (duration == C.TIME_UNSET) 0L else duration,
             shuffle = player.shuffleModeEnabled,
         )
+        if (mediaId != artFor) loadArtwork(mediaId)
+    }
+
+    private fun loadArtwork(mediaId: String?) {
+        artFor = mediaId
+        artJob?.cancel()
+        val id = mediaId?.toLongOrNull()
+        if (id == null) {
+            _artwork.value = null
+            return
+        }
+        artJob = viewModelScope.launch {
+            val bitmap = ArtLoader.load(getApplication(), id, 720)
+            if (artFor == mediaId) _artwork.value = bitmap?.asImageBitmap()
+        }
     }
 
     // ---------------------------------------------------------------- biblioteca
 
     fun loadLibrary() {
         viewModelScope.launch {
-            val list = MusicLibrary.scan(getApplication())
-            _songs.value = list
-            items = list.map { it.toMediaItem() }
+            _songs.value = MusicLibrary.scan(getApplication())
         }
+    }
+
+    fun openFolder(path: String) {
+        _browsePath.value = path
+    }
+
+    fun upFolder() {
+        val state = browser.value
+        if (!state.atRoot) _browsePath.value = Folders.parentOf(state.path)
+    }
+
+    /** Canciones de una carpeta y todas sus subcarpetas. */
+    private fun songsUnder(path: String): List<Song> {
+        val prefix = "$path/"
+        return _songs.value
+            .filter { it.folder == path || it.folder.startsWith(prefix) }
+            .sortedBy { it.path.lowercase() }
+    }
+
+    fun playFolder(path: String, shuffle: Boolean) {
+        val queue = songsUnder(path)
+        if (queue.isEmpty()) return
+        playQueue(queue, if (shuffle) queue.indices.random() else 0, shuffle)
     }
 
     // ---------------------------------------------------------------- reproducción
 
-    fun playSong(index: Int) {
+    /** Reproduce [queue] empezando en [startIndex]. Si [shuffle] es null se respeta el modo aleatorio actual. */
+    fun playQueue(queue: List<Song>, startIndex: Int, shuffle: Boolean? = null) {
         val c = controller ?: return
-        if (items.isEmpty() || index !in items.indices) return
-        c.setMediaItems(items, index, 0L)
+        if (queue.isEmpty()) return
+        if (shuffle != null) c.shuffleModeEnabled = shuffle
+        c.setMediaItems(queue.map { it.toMediaItem() }, startIndex.coerceIn(queue.indices), 0L)
         c.prepare()
         c.play()
     }
@@ -130,9 +188,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun togglePlay() {
         val c = controller ?: return
         when {
-            c.mediaItemCount == 0 -> playSong(0)
+            c.mediaItemCount == 0 -> playQueue(_songs.value, 0)
             c.playWhenReady -> c.pause()
-            else -> c.play() // También salta la intervención del locutor si está hablando.
+            else -> c.play()
         }
     }
 
@@ -153,26 +211,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         c.shuffleModeEnabled = !c.shuffleModeEnabled
     }
 
-    // ---------------------------------------------------------------- ajustes
+    // ---------------------------------------------------------------- locutor y ajustes
 
     fun toggleDj() {
         viewModelScope.launch { settingsRepo.update { it.copy(djEnabled = !it.djEnabled) } }
+    }
+
+    /** Calla al locutor en este momento (la música sigue). */
+    fun skipDj() {
+        DjBus.requestSkip()
     }
 
     fun saveSettings(newSettings: DjSettings) {
         viewModelScope.launch { settingsRepo.update { newSettings } }
     }
 
-    /** Genera y dice una intervención de prueba para comprobar clave de Gemini, clima y voz. */
+    /** Genera y dice un corte de prueba para comprobar clave de Gemini, clima y voz. */
     fun testDj() {
         viewModelScope.launch {
             _testStatus.value = "Generando…"
             val s = settingsRepo.current()
             val ctx = testWriter.buildContext(
-                kind = BreakKind.BETWEEN,
-                finished = SongInfo("Canción de prueba", "Artista de prueba"),
+                kind = BreakKind.START,
+                current = SongInfo("Canción de prueba", "Artista de prueba"),
                 next = SongInfo("Otra canción de prueba", "Otro artista"),
                 settings = s,
+                first = true,
             )
             val result = testWriter.write(ctx, s)
             val weatherNote = if (s.city.isNotBlank() && ctx.weather == null) {

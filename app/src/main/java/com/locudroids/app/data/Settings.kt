@@ -20,8 +20,13 @@ data class DjSettings(
     val geminiModel: String = DEFAULT_MODEL,
     val listenerName: String = "Margaro",
     val djName: String = "Locudroid",
+    val stationName: String = "Locudroids FM",
+    /** Nombres a los que el locutor manda saludos, separados por comas. */
+    val greetingsTo: String = "",
     val city: String = "",
-    val songsBetweenBreaks: Int = 2,
+    /** 1 = un corte cada 2 canciones, 2 = un corte al inicio de cada canción, 3 = inicio y final de cada canción. */
+    val intensity: Int = 2,
+    val allowTrivia: Boolean = true,
     val speechRate: Float = 1.0f,
 ) {
     companion object {
@@ -37,8 +42,11 @@ class SettingsRepository(private val context: Context) {
         val model = stringPreferencesKey("gemini_model")
         val listener = stringPreferencesKey("listener_name")
         val djName = stringPreferencesKey("dj_name")
+        val station = stringPreferencesKey("station_name")
+        val greetings = stringPreferencesKey("greetings_to")
         val city = stringPreferencesKey("city")
-        val interval = intPreferencesKey("songs_between_breaks")
+        val intensity = intPreferencesKey("dj_intensity")
+        val trivia = booleanPreferencesKey("allow_trivia")
         val rate = floatPreferencesKey("speech_rate")
     }
 
@@ -54,8 +62,11 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.model] = s.geminiModel
             prefs[Keys.listener] = s.listenerName
             prefs[Keys.djName] = s.djName
+            prefs[Keys.station] = s.stationName
+            prefs[Keys.greetings] = s.greetingsTo
             prefs[Keys.city] = s.city
-            prefs[Keys.interval] = s.songsBetweenBreaks
+            prefs[Keys.intensity] = s.intensity
+            prefs[Keys.trivia] = s.allowTrivia
             prefs[Keys.rate] = s.speechRate
         }
     }
@@ -68,8 +79,11 @@ class SettingsRepository(private val context: Context) {
             geminiModel = this[Keys.model] ?: d.geminiModel,
             listenerName = this[Keys.listener] ?: d.listenerName,
             djName = this[Keys.djName] ?: d.djName,
+            stationName = this[Keys.station] ?: d.stationName,
+            greetingsTo = this[Keys.greetings] ?: d.greetingsTo,
             city = this[Keys.city] ?: d.city,
-            songsBetweenBreaks = this[Keys.interval] ?: d.songsBetweenBreaks,
+            intensity = this[Keys.intensity] ?: d.intensity,
+            allowTrivia = this[Keys.trivia] ?: d.allowTrivia,
             speechRate = this[Keys.rate] ?: d.speechRate,
         )
     }

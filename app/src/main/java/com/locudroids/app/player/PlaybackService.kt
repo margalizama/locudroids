@@ -40,8 +40,6 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
         player.repeatMode = Player.REPEAT_MODE_ALL
-        // Pausa al final de cada canción: ahí es donde puede entrar el locutor.
-        player.setPauseAtEndOfMediaItems(true)
         exoPlayer = player
 
         val controller = DjController(this, player, scope, SettingsRepository(applicationContext))
@@ -49,33 +47,27 @@ class PlaybackService : MediaSessionService() {
 
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                if (mediaItem != null) controller.onTrackStarted(mediaItem)
+                if (mediaItem != null) {
+                    controller.onTrackStarted(
+                        mediaItem,
+                        interrupt = reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+                    )
+                }
             }
 
-            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
-                    controller.onSongEnded { player.play() }
-                }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (!isPlaying) controller.onPaused()
             }
         })
 
-        mediaSession = MediaSession.Builder(this, DjForwardingPlayer(player, controller)).build()
+        mediaSession = MediaSession.Builder(this, player).build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
-    /**
-     * Durante la intervención del locutor la música está en pausa; aun así el servicio debe seguir
-     * en primer plano para que Android no lo duerma ni impida reanudar en segundo plano.
-     */
-    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
-        super.onUpdateNotification(session, startInForegroundRequired || dj?.keepAlive == true)
-    }
-
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = exoPlayer
-        val busy = dj?.keepAlive == true
-        if (player == null || (!player.playWhenReady && !busy) || player.mediaItemCount == 0) {
+        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
             stopSelf()
         }
     }
