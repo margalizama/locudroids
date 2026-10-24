@@ -20,7 +20,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          set +e
+          ./gradlew assembleDebug --stacktrace --console=plain > build.log 2>&1
+          code=$?
+          cat build.log | tail -n 80
+          if [ $code -ne 0 ]; then
+            # Resume los errores en una anotación para verlos sin abrir el log completo.
+            errs=$(grep -E '^e: |error:|What went wrong|^> |FAILURE|Could not' build.log | head -60)
+            errs="${errs//'%'/'%25'}"
+            errs="${errs//$'\n'/'%0A'}"
+            echo "::error title=Errores de compilacion::$errs"
+          fi
+          exit $code
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
