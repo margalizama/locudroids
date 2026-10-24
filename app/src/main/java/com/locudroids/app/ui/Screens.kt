@@ -22,8 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.SkipNext
-import androidx.compose.material.icons.automirrored.filled.SkipPrevious
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
@@ -256,7 +256,7 @@ private fun NowPlayingCard(
                     )
                 }
                 IconButton(onClick = { vm.previous() }) {
-                    Icon(Icons.AutoMirrored.Filled.SkipPrevious, contentDescription = "Anterior")
+                    Icon(Icons.Filled.SkipPrevious, contentDescription = "Anterior")
                 }
                 FilledIconButton(onClick = { vm.togglePlay() }, modifier = Modifier.size(64.dp)) {
                     Icon(
@@ -266,7 +266,7 @@ private fun NowPlayingCard(
                     )
                 }
                 IconButton(onClick = { vm.next() }) {
-                    Icon(Icons.AutoMirrored.Filled.SkipNext, contentDescription = "Siguiente")
+                    Icon(Icons.Filled.SkipNext, contentDescription = "Siguiente")
                 }
                 IconToggleButton(checked = djEnabled, onCheckedChange = { vm.toggleDj() }) {
                     Icon(

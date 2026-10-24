@@ -53,7 +53,7 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGED_REASON_END_OF_MEDIA_ITEM) {
+                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                     controller.onSongEnded { player.play() }
                 }
             }
