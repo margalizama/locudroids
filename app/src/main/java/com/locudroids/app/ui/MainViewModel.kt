@@ -10,9 +10,11 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import com.locudroids.app.ai.BreakKind
-import com.locudroids.app.ai.DjWriter
+import com.locudroids.app.ai.ShowWriter
+import com.locudroids.app.ai.Slot
 import com.locudroids.app.ai.SongInfo
+import com.locudroids.app.ai.TrackPlan
+import com.locudroids.app.ai.stripTags
 import com.locudroids.app.data.ArtLoader
 import com.locudroids.app.data.BrowserState
 import com.locudroids.app.data.DjSettings
@@ -22,7 +24,7 @@ import com.locudroids.app.data.SettingsRepository
 import com.locudroids.app.data.Song
 import com.locudroids.app.player.DjBus
 import com.locudroids.app.player.PlaybackService
-import com.locudroids.app.player.Speaker
+import com.locudroids.app.player.VoiceDirector
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,13 +80,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val djSpeaking: StateFlow<Boolean> = DjBus.speaking
     val djLine: StateFlow<String?> = DjBus.lastLine
+    val djOnAir: StateFlow<String?> = DjBus.onAir
+    val djMood: StateFlow<String?> = DjBus.mood
 
     private var controller: MediaController? = null
     private var artJob: Job? = null
     private var artFor: String? = null
 
-    private val testWriter by lazy { DjWriter() }
-    private val testSpeaker by lazy { Speaker(app) }
+    private val testWriter by lazy { ShowWriter() }
+    private val testDirectorLazy = lazy { VoiceDirector(app) }
+    private val testDirector: VoiceDirector by testDirectorLazy
 
     init {
         connect()
@@ -211,13 +216,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         c.shuffleModeEnabled = !c.shuffleModeEnabled
     }
 
-    // ---------------------------------------------------------------- locutor y ajustes
+    // ---------------------------------------------------------------- locutores y ajustes
 
     fun toggleDj() {
         viewModelScope.launch { settingsRepo.update { it.copy(djEnabled = !it.djEnabled) } }
     }
 
-    /** Calla al locutor en este momento (la música sigue). */
+    /** Calla a los locutores en este momento (la música sigue). */
     fun skipDj() {
         DjBus.requestSkip()
     }
@@ -226,34 +231,50 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { settingsRepo.update { newSettings } }
     }
 
-    /** Genera y dice un corte de prueba para comprobar clave de Gemini, clima y voz. */
+    /** Genera un corte de prueba y lo dice, para comprobar clave, clima, guion y voz sin esperar a una canción. */
     fun testDj() {
         viewModelScope.launch {
-            _testStatus.value = "Generando…"
+            _testStatus.value = "Escribiendo el guion…"
             val s = settingsRepo.current()
-            val ctx = testWriter.buildContext(
-                kind = BreakKind.START,
-                current = SongInfo("Canción de prueba", "Artista de prueba"),
+            val plan = TrackPlan(setOf(Slot.INTRO), introIsTag = false)
+            val ctx = testWriter.context(
+                current = SongInfo("Canción de prueba", "Artista de prueba", "Álbum de prueba", 2015),
                 next = SongInfo("Otra canción de prueba", "Otro artista"),
+                plan = plan,
                 settings = s,
                 first = true,
+                lastSpoke = null,
             )
-            val result = testWriter.write(ctx, s)
-            val weatherNote = if (s.city.isNotBlank() && ctx.weather == null) {
-                "\nNo se pudo obtener el clima de \"${s.city}\"."
-            } else {
-                ""
+            val show = testWriter.write(ctx, s)
+            val cue = show.cues.firstOrNull()
+            if (cue == null) {
+                _testStatus.value = "No salió ningún corte." + (show.error?.let { "\nGemini: $it" } ?: "")
+                return@launch
             }
-            val errorNote = result.error?.let { "\nGemini: $it (se usó una frase de respaldo)." }.orEmpty()
-            _testStatus.value = result.text + weatherNote + errorNote
-            testSpeaker.speak(result.text, s.speechRate)
+
+            val notes = buildString {
+                if (s.city.isNotBlank() && ctx.weather == null) append("\nNo se pudo obtener el clima de \"${s.city}\".")
+                show.error?.let { append("\nGemini (guion): $it. Se usó un guion de respaldo.") }
+            }
+            val script = "Ánimo: ${show.mood ?: "—"}\n" +
+                cue.lines.joinToString("\n") { "${it.who}: ${it.text.stripTags()}" } + notes
+            _testStatus.value = "$script\nGenerando la voz…"
+
+            val clip = testDirector.makeClip(cue, s)
+            val voice = when {
+                clip.pcm != null -> "\nVoz: Gemini."
+                clip.ttsError != null -> "\nLa voz de Gemini falló: ${clip.ttsError}. Se usa la voz de Android."
+                else -> "\nVoz: Android."
+            }
+            _testStatus.value = script + voice
+            testDirector.play(clip, s)
         }
     }
 
     override fun onCleared() {
         controller?.release()
         controller = null
-        testSpeaker.shutdown()
+        if (testDirectorLazy.isInitialized()) testDirector.shutdown()
         super.onCleared()
     }
 }

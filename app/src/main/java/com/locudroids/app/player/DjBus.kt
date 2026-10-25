@@ -15,6 +15,14 @@ object DjBus {
     private val _lastLine = MutableStateFlow<String?>(null)
     val lastLine: StateFlow<String?> = _lastLine.asStateFlow()
 
+    /** Quién está al aire ("Rafa y Vale"). */
+    private val _onAir = MutableStateFlow<String?>(null)
+    val onAir: StateFlow<String?> = _onAir.asStateFlow()
+
+    /** Ánimo de la canción que suena, según el guion ("fiesta", "romántica"...). */
+    private val _mood = MutableStateFlow<String?>(null)
+    val mood: StateFlow<String?> = _mood.asStateFlow()
+
     private val _skip = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val skip: SharedFlow<Unit> = _skip.asSharedFlow()
 
@@ -26,7 +34,15 @@ object DjBus {
         _lastLine.value = value
     }
 
-    /** Pide al servicio que calle al locutor (la música sigue). */
+    fun setOnAir(value: String?) {
+        _onAir.value = value
+    }
+
+    fun setMood(value: String?) {
+        _mood.value = value
+    }
+
+    /** Pide al servicio que calle a los locutores (la música sigue). */
     fun requestSkip() {
         _skip.tryEmit(Unit)
     }

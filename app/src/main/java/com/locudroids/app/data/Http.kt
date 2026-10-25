@@ -1,5 +1,6 @@
 package com.locudroids.app.data
 
+import kotlinx.coroutines.delay
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -37,6 +38,27 @@ object Http {
             return readBody(conn)
         } finally {
             conn.disconnect()
+        }
+    }
+
+    /** Igual que [postJson] pero reintenta una vez si el servidor responde 429 (límite) o 503 (saturado). */
+    suspend fun postJsonRetry(
+        url: String,
+        body: String,
+        headers: Map<String, String> = emptyMap(),
+        timeoutMs: Int = 30_000,
+    ): String {
+        var attempt = 0
+        while (true) {
+            try {
+                return postJson(url, body, headers, timeoutMs)
+            } catch (e: IOException) {
+                val msg = e.message.orEmpty()
+                val retriable = msg.startsWith("HTTP 429") || msg.startsWith("HTTP 503")
+                if (!retriable || attempt >= 1) throw e
+                attempt++
+                delay(2_500)
+            }
         }
     }
 

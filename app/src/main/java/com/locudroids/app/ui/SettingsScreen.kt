@@ -2,6 +2,7 @@ package com.locudroids.app.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -14,7 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
@@ -34,7 +39,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.locudroids.app.ai.Levels
+import com.locudroids.app.data.Announcer
 import com.locudroids.app.data.DjSettings
+import com.locudroids.app.data.GeminiVoices
 import kotlin.math.roundToInt
 
 @Composable
@@ -67,6 +75,56 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
 }
 
 @Composable
+private fun SwitchRow(title: String, detail: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Tech.TextMain)
+            if (detail != null) {
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = Tech.TextDim)
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun ChoiceRow(selected: Boolean, title: String, detail: String, onSelect: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelect),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Column(Modifier.padding(start = 12.dp)) {
+            Text(title, color = Tech.TextMain)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = Tech.TextDim)
+        }
+    }
+}
+
+@Composable
+private fun VoicePicker(current: String, onSelect: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }) {
+            Text("Voz: ${GeminiVoices.label(current)}")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            GeminiVoices.all.forEach { (name, description) ->
+                DropdownMenuItem(
+                    text = { Text("$name · $description") },
+                    onClick = {
+                        onSelect(name)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SettingsForm(
     initial: DjSettings,
     testStatus: String?,
@@ -78,6 +136,9 @@ private fun SettingsForm(
     fun edit(transform: (DjSettings) -> DjSettings) {
         draft = transform(draft)
         onChange(draft)
+    }
+    fun editAnnouncer(index: Int, transform: (Announcer) -> Announcer) {
+        edit { s -> s.copy(announcers = s.announcers.mapIndexed { i, a -> if (i == index) transform(a) else a }) }
     }
 
     Column(
@@ -96,39 +157,68 @@ private fun SettingsForm(
             color = Tech.TextMain,
         )
 
-        SectionCard("LOCUTOR") {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Locutor activado", Modifier.weight(1f), color = Tech.TextMain)
-                Switch(checked = draft.djEnabled, onCheckedChange = { v -> edit { it.copy(djEnabled = v) } })
+        SectionCard("PROGRAMA") {
+            SwitchRow("Locutores activados", null, draft.djEnabled) { v -> edit { it.copy(djEnabled = v) } }
+
+            Text("¿Qué tanto hablan?", color = Tech.TextMain)
+            Levels.all.forEach { info ->
+                ChoiceRow(
+                    selected = draft.level == info.level,
+                    title = "${info.level} · ${info.name}",
+                    detail = info.detail,
+                ) { edit { it.copy(level = info.level) } }
             }
+            Text(
+                "Los locutores deducen el ánimo de cada canción y se adaptan: en una balada bajan la voz y no hay mitad de canción.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Tech.TextDim,
+            )
+        }
 
-            Text("¿Qué tanto habla?", color = Tech.TextMain)
-            IntensityOption(
-                selected = draft.intensity == 1,
-                title = "Suave",
-                detail = "Un corte cada 2 canciones",
-            ) { edit { it.copy(intensity = 1) } }
-            IntensityOption(
-                selected = draft.intensity == 2,
-                title = "Radio",
-                detail = "Un corte al inicio de cada canción",
-            ) { edit { it.copy(intensity = 2) } }
-            IntensityOption(
-                selected = draft.intensity == 3,
-                title = "Intenso",
-                detail = "Al inicio y al final de cada canción",
-            ) { edit { it.copy(intensity = 3) } }
+        SectionCard("HUMOR") {
+            ChoiceRow(draft.spice == 0, "Picante ligero", "Coqueteo y doble sentido suave") { edit { it.copy(spice = 0) } }
+            ChoiceRow(draft.spice == 1, "Doble sentido", "Bromas picantes, groserías muy leves") { edit { it.copy(spice = 1) } }
+            ChoiceRow(draft.spice == 2, "Albures fuertes", "Estilo radio nocturna y de cantina (sin contenido explícito)") {
+                edit { it.copy(spice = 2) }
+            }
+        }
 
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Datos de canciones y artistas", color = Tech.TextMain)
-                    Text(
-                        "El locutor comenta datos solo si está seguro de ellos.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Tech.TextDim,
-                    )
-                }
-                Switch(checked = draft.allowTrivia, onCheckedChange = { v -> edit { it.copy(allowTrivia = v) } })
+        SectionCard("SEGMENTOS") {
+            SwitchRow("Anuncios de parodia", "Comerciales falsos con marcas inventadas", draft.segAds) { v ->
+                edit { it.copy(segAds = v) }
+            }
+            SwitchRow("Promos de la estación", "Jingles hablados, concursos y llamadas falsas", draft.segPromos) { v ->
+                edit { it.copy(segPromos = v) }
+            }
+            SwitchRow("Horóscopo", "El horóscopo del día, de broma", draft.segHoroscope) { v ->
+                edit { it.copy(segHoroscope = v) }
+            }
+            SwitchRow("Dedicatorias", "A tus nombres o a oyentes inventados", draft.segDedications) { v ->
+                edit { it.copy(segDedications = v) }
+            }
+            SwitchRow("Datos y efemérides", "Solo si el modelo está seguro de que son ciertos", draft.allowTrivia) { v ->
+                edit { it.copy(allowTrivia = v) }
+            }
+        }
+
+        SectionCard("LOCUTORES") {
+            draft.announcers.forEachIndexed { index, announcer ->
+                if (index > 0) HorizontalDivider(color = Tech.GlassBorder)
+                OutlinedTextField(
+                    value = announcer.name,
+                    onValueChange = { v -> editAnnouncer(index) { it.copy(name = v) } },
+                    label = { Text("Locutor ${index + 1}: nombre") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                VoicePicker(announcer.voice) { voice -> editAnnouncer(index) { it.copy(voice = voice) } }
+                OutlinedTextField(
+                    value = announcer.persona,
+                    onValueChange = { v -> editAnnouncer(index) { it.copy(persona = v) } },
+                    label = { Text("Personalidad") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
 
@@ -137,13 +227,6 @@ private fun SettingsForm(
                 value = draft.stationName,
                 onValueChange = { v -> edit { it.copy(stationName = v) } },
                 label = { Text("Nombre de la estación") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = draft.djName,
-                onValueChange = { v -> edit { it.copy(djName = v) } },
-                label = { Text("Nombre del locutor") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -157,7 +240,7 @@ private fun SettingsForm(
             OutlinedTextField(
                 value = draft.greetingsTo,
                 onValueChange = { v -> edit { it.copy(greetingsTo = v) } },
-                label = { Text("Mandar saludos a") },
+                label = { Text("Saludos y dedicatorias para") },
                 supportingText = { Text("Nombres separados por comas. Ej.: mamá, los de la oficina, Luis") },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -176,7 +259,7 @@ private fun SettingsForm(
                 value = draft.geminiApiKey,
                 onValueChange = { v -> edit { it.copy(geminiApiKey = v) } },
                 label = { Text("Clave de API") },
-                supportingText = { Text("Se guarda solo en este teléfono. Sin clave, el locutor usa frases fijas.") },
+                supportingText = { Text("Se guarda solo en este teléfono. Sin clave, los locutores usan frases fijas.") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
@@ -184,13 +267,25 @@ private fun SettingsForm(
             OutlinedTextField(
                 value = draft.geminiModel,
                 onValueChange = { v -> edit { it.copy(geminiModel = v) } },
-                label = { Text("Modelo") },
+                label = { Text("Modelo del guion") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SwitchRow(
+                "Voces de Gemini (más humanas)",
+                "Si se apaga, o si falla, se usa la voz de Android",
+                draft.geminiVoice,
+            ) { v -> edit { it.copy(geminiVoice = v) } }
+            OutlinedTextField(
+                value = draft.ttsModel,
+                onValueChange = { v -> edit { it.copy(ttsModel = v) } },
+                label = { Text("Modelo de voz") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
 
-        SectionCard("VOZ") {
+        SectionCard("VOZ DE ANDROID (RESPALDO)") {
             Text("Velocidad: ${"%.1f".format(draft.speechRate)}x", color = Tech.TextMain)
             Slider(
                 value = draft.speechRate,
@@ -202,36 +297,21 @@ private fun SettingsForm(
                     inactiveTrackColor = Color(0x33FFFFFF),
                 ),
             )
-            Button(
-                onClick = onTest,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Tech.Cyan,
-                    contentColor = Color(0xFF04101A),
-                ),
-            ) {
-                Text("Probar al locutor")
-            }
-            if (testStatus != null) {
-                Text(testStatus, style = MaterialTheme.typography.bodyMedium, color = Tech.TextMain)
-            }
+        }
+
+        Button(
+            onClick = onTest,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Tech.Cyan,
+                contentColor = Color(0xFF04101A),
+            ),
+        ) {
+            Text("Probar a los locutores")
+        }
+        if (testStatus != null) {
+            Text(testStatus, style = MaterialTheme.typography.bodyMedium, color = Tech.TextMain)
         }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun IntensityOption(selected: Boolean, title: String, detail: String, onSelect: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onSelect),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Column(Modifier.padding(start = 12.dp)) {
-            Text(title, color = Tech.TextMain)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = Tech.TextDim)
-        }
     }
 }

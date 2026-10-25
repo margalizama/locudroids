@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -33,6 +34,7 @@ data class Song(
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setRecordingYear(year)
+                .setExtras(Bundle().apply { putLong(MusicLibrary.EXTRA_DURATION, durationMs) })
                 .build()
         )
         .build()
@@ -40,6 +42,9 @@ data class Song(
 
 /** Escanea los MP3 del teléfono usando MediaStore. */
 object MusicLibrary {
+
+    /** Clave en los extras del MediaItem con la duración de la canción (ms). */
+    const val EXTRA_DURATION = "durationMs"
 
     private val collection: Uri
         get() = if (Build.VERSION.SDK_INT >= 29) {

@@ -62,6 +62,8 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     val speaking by vm.djSpeaking.collectAsStateWithLifecycle()
     val line by vm.djLine.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val onAir by vm.djOnAir.collectAsStateWithLifecycle()
+    val mood by vm.djMood.collectAsStateWithLifecycle()
 
     val djEnabled = settings?.djEnabled ?: true
     val accent = if (speaking) Tech.Magenta else Tech.Cyan
@@ -195,12 +197,13 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                    val djName = settings?.djName ?: "Locutor"
+                    val crew = settings?.announcers?.joinToString(", ") { it.name } ?: "Locutores"
                     TechLabel(
                         when {
-                            !djEnabled -> "LOCUTOR APAGADO"
-                            speaking -> "${djName.uppercase()} · AL AIRE"
-                            else -> "${djName.uppercase()} · EN CABINA"
+                            !djEnabled -> "LOCUTORES APAGADOS"
+                            speaking -> "${(onAir ?: crew).uppercase()} · AL AIRE"
+                            !mood.isNullOrBlank() -> "ÁNIMO · ${mood.orEmpty().uppercase()}"
+                            else -> "EN CABINA · ${crew.uppercase()}"
                         },
                         color = if (speaking) Tech.Magenta else Tech.TextDim,
                     )
@@ -212,7 +215,7 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                     }
                 }
                 Text(
-                    line ?: "Tu locutor entra en cuanto empiece la música.",
+                    line ?: "Tus locutores entran en cuanto empiece la música.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (speaking) Tech.TextMain else Tech.TextDim,
                 )

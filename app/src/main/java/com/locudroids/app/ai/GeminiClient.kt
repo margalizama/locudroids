@@ -14,6 +14,8 @@ class GeminiClient {
         model: String,
         system: String,
         prompt: String,
+        json: Boolean = false,
+        maxTokens: Int = 1024,
     ): String = withContext(Dispatchers.IO) {
         val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"
 
@@ -32,16 +34,19 @@ class GeminiClient {
             )
             put(
                 "generationConfig",
-                JSONObject()
-                    .put("temperature", 1.0)
-                    .put("maxOutputTokens", 1024)
+                JSONObject().apply {
+                    put("temperature", 1.0)
+                    put("maxOutputTokens", maxTokens)
+                    if (json) put("responseMimeType", "application/json")
+                }
             )
         }
 
-        val response = Http.postJson(
+        val response = Http.postJsonRetry(
             url = url,
             body = body.toString(),
             headers = mapOf("x-goog-api-key" to apiKey),
+            timeoutMs = 30_000,
         )
 
         val candidates = JSONObject(response).optJSONArray("candidates")

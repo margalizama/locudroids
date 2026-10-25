@@ -44,10 +44,11 @@ class Speaker(context: Context) {
     }
 
     /** Habla el texto y espera a que termine. Devuelve true si se dijo completo. */
-    suspend fun speak(text: String, rate: Float): Boolean {
+    suspend fun speak(text: String, rate: Float, pitch: Float = 1f): Boolean {
         if (!ready.await()) return false
         val engine = tts ?: return false
         engine.setSpeechRate(rate)
+        engine.setPitch(pitch)
 
         val id = UUID.randomUUID().toString()
         val done = CompletableDeferred<Boolean>()
