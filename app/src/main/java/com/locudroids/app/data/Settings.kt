@@ -22,6 +22,8 @@ data class DjSettings(
     val ttsModel: String = DEFAULT_TTS_MODEL,
     /** true = voces de Gemini (más humanas); false = voz de Android. */
     val geminiVoice: Boolean = true,
+    /** Si la voz de Gemini falla: true = decir el corte con la voz de Android (robótica); false = omitir el corte. */
+    val androidFallback: Boolean = false,
     /** Velocidad de la voz de Android (solo se usa como respaldo o si Gemini voz está apagada). */
     val speechRate: Float = 1.0f,
 
@@ -58,6 +60,7 @@ class SettingsRepository(private val context: Context) {
         val model = stringPreferencesKey("gemini_model")
         val ttsModel = stringPreferencesKey("tts_model")
         val geminiVoice = booleanPreferencesKey("gemini_voice")
+        val androidFallback = booleanPreferencesKey("android_fallback")
         val rate = floatPreferencesKey("speech_rate")
         val listener = stringPreferencesKey("listener_name")
         val station = stringPreferencesKey("station_name")
@@ -91,6 +94,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.model] = s.geminiModel
             prefs[Keys.ttsModel] = s.ttsModel
             prefs[Keys.geminiVoice] = s.geminiVoice
+            prefs[Keys.androidFallback] = s.androidFallback
             prefs[Keys.rate] = s.speechRate
             prefs[Keys.listener] = s.listenerName
             prefs[Keys.station] = s.stationName
@@ -124,6 +128,7 @@ class SettingsRepository(private val context: Context) {
             geminiModel = this[Keys.model] ?: d.geminiModel,
             ttsModel = this[Keys.ttsModel] ?: d.ttsModel,
             geminiVoice = this[Keys.geminiVoice] ?: d.geminiVoice,
+            androidFallback = this[Keys.androidFallback] ?: d.androidFallback,
             speechRate = this[Keys.rate] ?: d.speechRate,
             listenerName = this[Keys.listener] ?: d.listenerName,
             stationName = this[Keys.station] ?: d.stationName,

@@ -276,6 +276,11 @@ private fun SettingsForm(
                 "Si se apaga, o si falla, se usa la voz de Android",
                 draft.geminiVoice,
             ) { v -> edit { it.copy(geminiVoice = v) } }
+            SwitchRow(
+                "Si Gemini falla, usar la voz de Android",
+                "Suena robótica. Apagado: el corte se omite y la música sigue sola",
+                draft.androidFallback,
+            ) { v -> edit { it.copy(androidFallback = v) } }
             OutlinedTextField(
                 value = draft.ttsModel,
                 onValueChange = { v -> edit { it.copy(ttsModel = v) } },

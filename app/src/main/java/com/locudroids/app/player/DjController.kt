@@ -215,8 +215,12 @@ class DjController(
                 when {
                     clip != null -> {
                         p.done += Slot.INTRO
-                        intrude(clip)
-                        return
+                        if (clip.skip) {
+                            reportSkipped(clip)
+                        } else {
+                            intrude(clip)
+                            return
+                        }
                     }
                     p.noCue(Slot.INTRO) || pos > INTRO_LATEST_MS -> p.done += Slot.INTRO
                 }
@@ -232,8 +236,12 @@ class DjController(
                 when {
                     clip != null && pos <= until -> {
                         p.done += Slot.MID
-                        intrude(clip)
-                        return
+                        if (clip.skip) {
+                            reportSkipped(clip)
+                        } else {
+                            intrude(clip)
+                            return
+                        }
                     }
                     p.noCue(Slot.MID) || pos > until -> p.done += Slot.MID
                 }
@@ -250,7 +258,9 @@ class DjController(
                     p.done += Slot.OUTRO
                     // Si el usuario cambió el orden, la canción que sigue ya no es la del guion.
                     val stillNext = itemAt(nextIndexAfter(player.currentMediaItemIndex))?.mediaId == p.nextId
-                    if (stillNext) {
+                    if (clip.skip) {
+                        reportSkipped(clip)
+                    } else if (stillNext) {
                         intrude(clip)
                         return
                     }
@@ -269,6 +279,7 @@ class DjController(
         DjBus.setSpeaking(true)
         DjBus.setOnAir(clip.lines.map { it.who }.distinct().joinToString(" y "))
         DjBus.setLine(clip.lines.joinToString("\n") { "${it.who}: ${it.text.stripTags()}" })
+        DjBus.setVoiceInfo(voiceLabel(clip))
         clip.lines.lastOrNull()?.who?.let { lastSpoke = it }
 
         talkJob = scope.launch {
@@ -289,6 +300,18 @@ class DjController(
                 }
             }
         }
+    }
+
+    private fun voiceLabel(clip: Clip): String = when {
+        clip.pcm != null -> "Voz: Gemini"
+        clip.ttsError != null -> "Voz: Android (Gemini falló: ${clip.ttsError})"
+        else -> "Voz: Android"
+    }
+
+    /** La voz de Gemini falló y el ajuste pide no usar la de Android: el corte no se dice, y se avisa. */
+    private fun reportSkipped(clip: Clip) {
+        Log.w(TAG, "Corte omitido: ${clip.ttsError}")
+        DjBus.setVoiceInfo("Corte omitido: Gemini falló (${clip.ttsError})")
     }
 
     private fun cancelTalk() {

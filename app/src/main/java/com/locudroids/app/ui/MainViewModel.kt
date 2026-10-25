@@ -82,6 +82,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val djLine: StateFlow<String?> = DjBus.lastLine
     val djOnAir: StateFlow<String?> = DjBus.onAir
     val djMood: StateFlow<String?> = DjBus.mood
+    val djVoiceInfo: StateFlow<String?> = DjBus.voiceInfo
 
     private var controller: MediaController? = null
     private var artJob: Job? = null
@@ -263,11 +264,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val clip = testDirector.makeClip(cue, s)
             val voice = when {
                 clip.pcm != null -> "\nVoz: Gemini."
+                clip.skip -> "\nLa voz de Gemini falló: ${clip.ttsError}. En el programa este corte se omitiría " +
+                    "(activa \"Si Gemini falla, usar la voz de Android\" si prefieres oírlo robótico)."
                 clip.ttsError != null -> "\nLa voz de Gemini falló: ${clip.ttsError}. Se usa la voz de Android."
                 else -> "\nVoz: Android."
             }
             _testStatus.value = script + voice
-            testDirector.play(clip, s)
+            if (!clip.skip) testDirector.play(clip, s)
         }
     }
 

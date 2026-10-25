@@ -20,7 +20,7 @@ class GeminiTts {
         when (speakers.size) {
             1 -> single(apiKey, model, lines)
             2 -> multi(apiKey, model, lines, speakers)
-            else -> sequential(apiKey, model, lines)
+            else -> synthesizeSequential(apiKey, model, lines)
         }
     }
 
@@ -45,7 +45,7 @@ class GeminiTts {
     }
 
     /** Más de 2 locutores en un corte: una petición por línea, unidas con una pausa corta. */
-    private suspend fun sequential(apiKey: String, model: String, lines: List<TtsLine>): Pcm {
+    suspend fun synthesizeSequential(apiKey: String, model: String, lines: List<TtsLine>): Pcm {
         val out = ByteArrayOutputStream()
         var rate = 24_000
         for (line in lines) {

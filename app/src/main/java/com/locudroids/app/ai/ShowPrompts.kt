@@ -52,6 +52,8 @@ object ShowPrompts {
             "- \"style\" es una indicación breve de cómo se dice (máximo 8 palabras), por ejemplo \"enérgico y rápido, con sonrisa pícara\".",
             "- \"text\" es solo lo que se dice en voz alta: español de México, hablado y natural, sin emojis, sin markdown y sin acotaciones entre paréntesis. " +
                 "Puedes usar muy poco (máximo 2 por corte) las marcas <short pause>, <laugh> o <sigh>.",
+            "- Escribe para ser DICHO, no leído: frases cortas, ritmo de radio, muletillas naturales (\"ey\", \"órale\", \"mira\", \"qué onda\"), " +
+                "contracciones y exclamaciones; nada de listas, paréntesis, siglas raras ni frases largas con muchas comas.",
             "- Di la hora EXACTAMENTE como se te da, sin pasarla a números. Escribe las cifras como se pronuncian (\"veintidós grados\").",
             "- Presupuesto: ${level.maxWords} palabras por corte como máximo. $dialogue",
             "- Menciona la estación solo de vez en cuando. No repitas estructuras ni muletillas entre cortes; reparte la palabra entre los locutores.",

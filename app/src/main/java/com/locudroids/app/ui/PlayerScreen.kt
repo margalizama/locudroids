@@ -64,6 +64,7 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val onAir by vm.djOnAir.collectAsStateWithLifecycle()
     val mood by vm.djMood.collectAsStateWithLifecycle()
+    val voiceInfo by vm.djVoiceInfo.collectAsStateWithLifecycle()
 
     val djEnabled = settings?.djEnabled ?: true
     val accent = if (speaking) Tech.Magenta else Tech.Cyan
@@ -219,6 +220,12 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (speaking) Tech.TextMain else Tech.TextDim,
                 )
+                if (!voiceInfo.isNullOrBlank()) {
+                    TechLabel(
+                        voiceInfo.orEmpty().uppercase(),
+                        color = if (voiceInfo.orEmpty().startsWith("Voz: Gemini")) Tech.Cyan else Tech.Magenta,
+                    )
+                }
             }
         }
         Spacer(Modifier.size(8.dp))

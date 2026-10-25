@@ -23,6 +23,10 @@ object DjBus {
     private val _mood = MutableStateFlow<String?>(null)
     val mood: StateFlow<String?> = _mood.asStateFlow()
 
+    /** Qué voz se usó en el último corte ("Voz: Gemini", o por qué se usó otra / se omitió). */
+    private val _voiceInfo = MutableStateFlow<String?>(null)
+    val voiceInfo: StateFlow<String?> = _voiceInfo.asStateFlow()
+
     private val _skip = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val skip: SharedFlow<Unit> = _skip.asSharedFlow()
 
@@ -40,6 +44,10 @@ object DjBus {
 
     fun setMood(value: String?) {
         _mood.value = value
+    }
+
+    fun setVoiceInfo(value: String?) {
+        _voiceInfo.value = value
     }
 
     /** Pide al servicio que calle a los locutores (la música sigue). */
