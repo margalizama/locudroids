@@ -1,7 +1,14 @@
 package com.locudroids.app.data
 
-/** Un locutor del programa: su nombre, su voz de Gemini y su personalidad. */
-data class Announcer(val name: String, val voice: String, val persona: String) {
+import com.locudroids.app.ai.LocalVoices
+
+/** Un locutor del programa: su nombre, su voz de Gemini, su voz local (hablante de Kokoro) y su personalidad. */
+data class Announcer(
+    val name: String,
+    val voice: String,
+    val persona: String,
+    val localVoice: Int = LocalVoices.ALEX,
+) {
     companion object {
         fun defaults(): List<Announcer> = listOf(
             Announcer(
@@ -9,18 +16,21 @@ data class Announcer(val name: String, val voice: String, val persona: String) {
                 voice = "Fenrir",
                 persona = "El conductor del programa. Enérgico y carismático, con voz de locutor de éxitos. " +
                     "Lleva el ritmo, presenta las canciones con actitud, grita las frases de la estación y siempre tiene un comentario de fiesta.",
+                localVoice = LocalVoices.ALEX,
             ),
             Announcer(
                 name = "Vale",
                 voice = "Aoede",
                 persona = "La pícara. Coqueta, rápida y sarcástica. Lanza albures y dobles sentidos con una sonrisa, " +
                     "manda saludos atrevidos y le encanta molestar a Chuy.",
+                localVoice = LocalVoices.DORA,
             ),
             Announcer(
                 name = "Chuy",
                 voice = "Algenib",
                 persona = "El bromista. Voz grave y rasposa, humor de barrio y de cantina. " +
                     "Hace los anuncios de parodia, los horóscopos locos y las dedicatorias absurdas, y se defiende de los ataques de Vale.",
+                localVoice = LocalVoices.SANTA,
             ),
         )
     }

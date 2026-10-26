@@ -9,3 +9,7 @@ captures/
 *.apk
 *.aab
 .DS_Store
+
+# Voz local (se descarga con scripts/fetch-voice-assets.sh)
+app/src/main/jniLibs/
+app/src/main/assets/kokoro/

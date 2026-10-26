@@ -110,6 +110,7 @@ class DjController(
 
     init {
         scope.launch { settingsRepo.flow.collect { settings = it } }
+        scope.launch { director.warmUp(settingsRepo.current()) }
         scope.launch { DjBus.skip.collect { cancelTalk() } }
         scope.launch {
             while (isActive) {
@@ -302,16 +303,19 @@ class DjController(
         }
     }
 
-    private fun voiceLabel(clip: Clip): String = when {
-        clip.pcm != null -> "Voz: Gemini"
-        clip.ttsError != null -> "Voz: Android (Gemini falló: ${clip.ttsError})"
-        else -> "Voz: Android"
+    private fun voiceLabel(clip: Clip): String {
+        val base = when (clip.source) {
+            VoiceSource.GEMINI -> "Voz: Gemini"
+            VoiceSource.LOCAL -> "Voz: local (neuronal)"
+            VoiceSource.ANDROID -> "Voz: Android"
+        }
+        return if (clip.note != null) "$base · ${clip.note}" else base
     }
 
-    /** La voz de Gemini falló y el ajuste pide no usar la de Android: el corte no se dice, y se avisa. */
+    /** No hubo ninguna voz buena y el ajuste pide no usar la de Android: el corte no se dice, y se avisa. */
     private fun reportSkipped(clip: Clip) {
-        Log.w(TAG, "Corte omitido: ${clip.ttsError}")
-        DjBus.setVoiceInfo("Corte omitido: Gemini falló (${clip.ttsError})")
+        Log.w(TAG, "Corte omitido: ${clip.note}")
+        DjBus.setVoiceInfo("Corte omitido: ${clip.note ?: "sin voz disponible"}")
     }
 
     private fun cancelTalk() {

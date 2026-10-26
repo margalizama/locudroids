@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.locudroids.app.ai.Levels
+import com.locudroids.app.ai.LocalVoices
 import com.locudroids.app.data.Announcer
 import com.locudroids.app.data.DjSettings
 import com.locudroids.app.data.GeminiVoices
@@ -99,6 +100,27 @@ private fun ChoiceRow(selected: Boolean, title: String, detail: String, onSelect
         Column(Modifier.padding(start = 12.dp)) {
             Text(title, color = Tech.TextMain)
             Text(detail, style = MaterialTheme.typography.bodySmall, color = Tech.TextDim)
+        }
+    }
+}
+
+@Composable
+private fun LocalVoicePicker(current: Int, onSelect: (Int) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }) {
+            Text("Voz local: ${LocalVoices.label(current)}")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            LocalVoices.all.forEach { (id, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onSelect(id)
+                        expanded = false
+                    },
+                )
+            }
         }
     }
 }
@@ -212,6 +234,7 @@ private fun SettingsForm(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 VoicePicker(announcer.voice) { voice -> editAnnouncer(index) { it.copy(voice = voice) } }
+                LocalVoicePicker(announcer.localVoice) { id -> editAnnouncer(index) { it.copy(localVoice = id) } }
                 OutlinedTextField(
                     value = announcer.persona,
                     onValueChange = { v -> editAnnouncer(index) { it.copy(persona = v) } },
@@ -271,16 +294,6 @@ private fun SettingsForm(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            SwitchRow(
-                "Voces de Gemini (más humanas)",
-                "Si se apaga, o si falla, se usa la voz de Android",
-                draft.geminiVoice,
-            ) { v -> edit { it.copy(geminiVoice = v) } }
-            SwitchRow(
-                "Si Gemini falla, usar la voz de Android",
-                "Suena robótica. Apagado: el corte se omite y la música sigue sola",
-                draft.androidFallback,
-            ) { v -> edit { it.copy(androidFallback = v) } }
             OutlinedTextField(
                 value = draft.ttsModel,
                 onValueChange = { v -> edit { it.copy(ttsModel = v) } },
@@ -290,8 +303,28 @@ private fun SettingsForm(
             )
         }
 
-        SectionCard("VOZ DE ANDROID (RESPALDO)") {
-            Text("Velocidad: ${"%.1f".format(draft.speechRate)}x", color = Tech.TextMain)
+        SectionCard("VOCES") {
+            ChoiceRow(
+                draft.voiceEngine == DjSettings.ENGINE_AUTO,
+                "Automático (recomendado)",
+                "Gemini cuando responde; si falla o se acaba la cuota, voz neuronal local",
+            ) { edit { it.copy(voiceEngine = DjSettings.ENGINE_AUTO) } }
+            ChoiceRow(
+                draft.voiceEngine == DjSettings.ENGINE_LOCAL,
+                "Solo voz local",
+                "Sin internet ni cuotas; el guion sí usa Gemini",
+            ) { edit { it.copy(voiceEngine = DjSettings.ENGINE_LOCAL) } }
+            ChoiceRow(
+                draft.voiceEngine == DjSettings.ENGINE_GEMINI,
+                "Solo Gemini",
+                "Si falla, el corte se omite",
+            ) { edit { it.copy(voiceEngine = DjSettings.ENGINE_GEMINI) } }
+            SwitchRow(
+                "Último recurso: voz de Android",
+                "Suena robótica. Apagado: si no hay otra voz, el corte se omite",
+                draft.androidFallback,
+            ) { v -> edit { it.copy(androidFallback = v) } }
+            Text("Velocidad de la voz: ${"%.1f".format(draft.speechRate)}x", color = Tech.TextMain)
             Slider(
                 value = draft.speechRate,
                 onValueChange = { v -> edit { it.copy(speechRate = (v * 10).roundToInt() / 10f) } },

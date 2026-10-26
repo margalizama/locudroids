@@ -25,6 +25,7 @@ import com.locudroids.app.data.Song
 import com.locudroids.app.player.DjBus
 import com.locudroids.app.player.PlaybackService
 import com.locudroids.app.player.VoiceDirector
+import com.locudroids.app.player.VoiceSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -259,15 +260,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             val script = "Ánimo: ${show.mood ?: "—"}\n" +
                 cue.lines.joinToString("\n") { "${it.who}: ${it.text.stripTags()}" } + notes
-            _testStatus.value = "$script\nGenerando la voz…"
+            _testStatus.value = "$script\nGenerando la voz (la primera vez la voz local tarda en cargar)…"
 
             val clip = testDirector.makeClip(cue, s)
             val voice = when {
-                clip.pcm != null -> "\nVoz: Gemini."
-                clip.skip -> "\nLa voz de Gemini falló: ${clip.ttsError}. En el programa este corte se omitiría " +
-                    "(activa \"Si Gemini falla, usar la voz de Android\" si prefieres oírlo robótico)."
-                clip.ttsError != null -> "\nLa voz de Gemini falló: ${clip.ttsError}. Se usa la voz de Android."
-                else -> "\nVoz: Android."
+                clip.skip -> "\nNo hubo voz disponible: ${clip.note ?: "sin detalle"}. En el programa este corte se omitiría."
+                else -> {
+                    val name = when (clip.source) {
+                        VoiceSource.GEMINI -> "Gemini"
+                        VoiceSource.LOCAL -> "local (neuronal)"
+                        VoiceSource.ANDROID -> "Android (robótica)"
+                    }
+                    "\nVoz: $name." + (clip.note?.let { "\n($it)" } ?: "")
+                }
             }
             _testStatus.value = script + voice
             if (!clip.skip) testDirector.play(clip, s)

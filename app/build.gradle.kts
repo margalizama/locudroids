@@ -12,8 +12,13 @@ android {
         applicationId = "com.locudroids.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
+
+        // La voz local (sherpa-onnx) solo trae bibliotecas para estas arquitecturas.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -29,6 +34,11 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    // El modelo de voz se lee directo del APK: no se comprime.
+    androidResources {
+        noCompress += listOf("onnx", "bin")
     }
 
     buildFeatures {

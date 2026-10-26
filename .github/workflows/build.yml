@@ -19,6 +19,17 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Cache voz local
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/src/main/jniLibs
+            app/src/main/assets/kokoro
+          key: voz-local-${{ hashFiles('scripts/fetch-voice-assets.sh') }}
+
+      - name: Descargar voz local (sherpa-onnx + Kokoro)
+        run: scripts/fetch-voice-assets.sh
+
       - name: Build debug APK
         run: |
           set +e
