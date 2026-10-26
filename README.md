@@ -21,8 +21,11 @@ Reproductor de MP3 para Android con **locutores IA privados** estilo radio music
 - **Humor:** picante ligero, doble sentido o albures fuertes (sin contenido sexual explícito ni burlas humillantes).
 - **Segmentos:** anuncios de parodia (marcas inventadas), promos de la estación, horóscopo, efemérides
   (solo si el modelo está seguro) y dedicatorias a los nombres que configures.
-- **Voz humana:** voces de Gemini TTS (una por locutor). Si la voz de Gemini falla o se apaga,
-  se usa la voz de Android con un tono distinto por locutor.
+- **Voz humana:** voces de Gemini TTS (una por locutor). Si Gemini falla (p. ej. HTTP 429 por cuota),
+  se pausa 10 min y los cortes salen con una **voz neuronal local** (Kokoro vía sherpa-onnx, dentro de la app,
+  sin internet ni cuotas): Alex, Dora y Santa, una por locutor. La voz de Android es solo último recurso (apagado por defecto).
+  Ajustes → VOCES permite elegir Automático / Solo local / Solo Gemini.
+  El modelo (~140 MB) y las bibliotecas se bajan con `scripts/fetch-voice-assets.sh` (lo hace el CI; para compilar en local, córrelo antes).
 - **Sin esperas:** el guion y el audio de la siguiente canción se preparan mientras suena la actual.
 - La música baja de volumen mientras hablan los locutores. El botón **CALLAR** los detiene al instante.
 - **Clima:** Open-Meteo (gratis, sin clave).
