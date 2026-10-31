@@ -1,6 +1,12 @@
 package com.locudroids.app.player
 
 import android.content.Intent
+import android.os.Bundle
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.Job
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -27,6 +33,7 @@ class PlaybackService : MediaSessionService() {
     private var exoPlayer: ExoPlayer? = null
     private var dj: DjController? = null
     private var tracker: PlaybackTracker? = null
+    private var restoreJob: Job? = null
     private var mix: MixEngine? = null
 
     /** Se restauró la cola guardada y el locutor aún no preparó la canción actual (lo hará al dar play). */
@@ -105,9 +112,36 @@ class PlaybackService : MediaSessionService() {
         val t = PlaybackTracker(player, data, scope)
         t.start()
         tracker = t
-        scope.launch { restoreSession(player, data) }
+        restoreJob = scope.launch { restoreSession(player, data) }
 
-        mediaSession = MediaSession.Builder(this, player).build()
+        mediaSession = MediaSession.Builder(this, player)
+            .setCallback(object : MediaSession.Callback {
+                override fun onConnect(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                ): MediaSession.ConnectionResult {
+                    val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                        .add(SessionCommand(AutoPlay.CMD_RESUME, Bundle.EMPTY))
+                        .build()
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                        .setAvailableSessionCommands(commands)
+                        .build()
+                }
+
+                override fun onCustomCommand(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    customCommand: SessionCommand,
+                    args: Bundle,
+                ): ListenableFuture<SessionResult> {
+                    if (customCommand.customAction == AutoPlay.CMD_RESUME) {
+                        scope.launch { resumePlayback(player) }
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    return super.onCustomCommand(session, controller, customCommand, args)
+                }
+            })
+            .build()
     }
 
     /** Al abrir la app deja la cola, la canción y el segundo donde se quedó la última vez (en pausa). */
@@ -132,6 +166,23 @@ class PlaybackService : MediaSessionService() {
         } finally {
             restoring = false
         }
+    }
+
+    /** Pedido de reanudar desde fuera (Bluetooth): sigue donde se quedó, o arma una cola aleatoria si no hay historial. */
+    private suspend fun resumePlayback(player: ExoPlayer) {
+        restoreJob?.join()
+        if (player.mediaItemCount == 0) {
+            val songs = try {
+                MusicLibrary.scan(applicationContext)
+            } catch (e: Exception) {
+                emptyList()
+            }
+            if (songs.isEmpty()) return
+            player.shuffleModeEnabled = true
+            player.setMediaItems(songs.shuffled().take(300).map { it.toMediaItem() })
+            player.prepare()
+        }
+        if (!player.isPlaying) player.play()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession

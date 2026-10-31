@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -45,6 +46,11 @@ data class DjSettings(
     /** Duración del fundido en segundos. */
     val mixSeconds: Int = 6,
 
+    /** Empezar a tocar cuando se conecta uno de los dispositivos Bluetooth de [btDevices]. */
+    val btAutoPlay: Boolean = false,
+    /** Dispositivos elegidos, como "dirección|nombre". */
+    val btDevices: Set<String> = emptySet(),
+
     /** Analizar la biblioteca (ánimo y ritmo) en segundo plano al abrir la app. */
     val autoAnalyze: Boolean = true,
 
@@ -80,6 +86,8 @@ class SettingsRepository(private val context: Context) {
         val trivia = booleanPreferencesKey("allow_trivia")
         val autoAnalyze = booleanPreferencesKey("auto_analyze")
         val mixMode = intPreferencesKey("mix_mode")
+        val btAutoPlay = booleanPreferencesKey("bt_auto_play")
+        val btDevices = stringSetPreferencesKey("bt_devices")
         val mixSeconds = intPreferencesKey("mix_seconds")
 
         /** Ajuste de la versión anterior (1-3): se migra a [level]. */
@@ -116,6 +124,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.trivia] = s.allowTrivia
             prefs[Keys.autoAnalyze] = s.autoAnalyze
             prefs[Keys.mixMode] = s.mixMode
+            prefs[Keys.btAutoPlay] = s.btAutoPlay
+            prefs[Keys.btDevices] = s.btDevices
             prefs[Keys.mixSeconds] = s.mixSeconds
             s.announcers.take(ANNOUNCERS).forEachIndexed { i, a ->
                 prefs[Keys.announcerName[i]] = a.name
@@ -151,6 +161,8 @@ class SettingsRepository(private val context: Context) {
             segDedications = this[Keys.segDedications] ?: d.segDedications,
             allowTrivia = this[Keys.trivia] ?: d.allowTrivia,
             autoAnalyze = this[Keys.autoAnalyze] ?: d.autoAnalyze,
+            btAutoPlay = this[Keys.btAutoPlay] ?: d.btAutoPlay,
+            btDevices = this[Keys.btDevices] ?: d.btDevices,
             mixMode = (this[Keys.mixMode] ?: d.mixMode).coerceIn(DjSettings.MIX_OFF, DjSettings.MIX_BEAT),
             mixSeconds = (this[Keys.mixSeconds] ?: d.mixSeconds).coerceIn(2, 12),
             announcers = d.announcers.mapIndexed { i, def ->

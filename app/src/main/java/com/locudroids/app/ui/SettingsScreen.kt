@@ -1,5 +1,16 @@
 package com.locudroids.app.ui
 
+import android.Manifest
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,6 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -120,6 +135,89 @@ private fun LocalVoicePicker(current: Int, onSelect: (Int) -> Unit) {
                         expanded = false
                     },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BluetoothSection(draft: DjSettings, edit: ((DjSettings) -> DjSettings) -> Unit) {
+    val context = LocalContext.current
+    fun hasPermission() = Build.VERSION.SDK_INT < 31 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+
+    fun ignoringBattery(): Boolean =
+        (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
+
+    var granted by remember { mutableStateOf(hasPermission()) }
+    var unrestricted by remember { mutableStateOf(ignoringBattery()) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+    LifecycleResumeEffect(Unit) {
+        granted = hasPermission()
+        unrestricted = ignoringBattery()
+        onPauseOrDispose { }
+    }
+
+    val bonded: List<Pair<String, String>> = if (granted) {
+        try {
+            val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+            adapter?.bondedDevices?.map { it.address to (it.name ?: it.address) }?.sortedBy { it.second.lowercase() }.orEmpty()
+        } catch (e: SecurityException) {
+            emptyList()
+        }
+    } else {
+        emptyList()
+    }
+
+    SectionCard("BLUETOOTH") {
+        SwitchRow(
+            "Empezar a tocar al conectar",
+            "Cuando se conecte uno de los dispositivos que elijas (auto, bocina, audífonos)",
+            draft.btAutoPlay,
+        ) { v -> edit { it.copy(btAutoPlay = v) } }
+        if (draft.btAutoPlay) {
+            if (!granted) {
+                OutlinedButton(onClick = { launcher.launch(Manifest.permission.BLUETOOTH_CONNECT) }) {
+                    Text("Dar permiso de Bluetooth")
+                }
+            } else if (bonded.isEmpty()) {
+                Text(
+                    "No hay dispositivos emparejados. Empareja primero tu auto o bocina en los ajustes de Bluetooth del teléfono.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Tech.TextDim,
+                )
+            }
+            bonded.forEach { (address, name) ->
+                val checked = draft.btDevices.any { it.substringBefore('|') == address }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            edit { st ->
+                                val without = st.btDevices.filterNot { it.substringBefore('|') == address }.toSet()
+                                st.copy(btDevices = if (checked) without else without + "$address|$name")
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = checked, onCheckedChange = null)
+                    Text("  $name", color = Tech.TextMain)
+                }
+            }
+            if (!unrestricted) {
+                Text(
+                    "Para que arranque con la app cerrada, Android debe permitirle trabajar en segundo plano.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Tech.TextDim,
+                )
+                OutlinedButton(onClick = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }) { Text("Permitir en segundo plano") }
+            } else {
+                Text("Segundo plano permitido.", style = MaterialTheme.typography.bodySmall, color = Tech.Cyan)
             }
         }
     }
@@ -260,6 +358,8 @@ private fun SettingsForm(
                 }
             }
         }
+
+        BluetoothSection(draft) { t -> edit(t) }
 
         SectionCard("BIBLIOTECA") {
             SwitchRow(
