@@ -41,6 +41,7 @@ class DjController(
 ) {
     private val writer = ShowWriter()
     private val director = VoiceDirector(context.applicationContext)
+    private val data = com.locudroids.app.data.AppData.get(context.applicationContext)
 
     @Volatile
     private var settings = DjSettings()
@@ -358,7 +359,27 @@ class DjController(
         val title = item.mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() } ?: "una canción sin título"
         val artist = item.mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() && it != "<unknown>" }
         val album = item.mediaMetadata.albumTitle?.toString()?.takeIf { it.isNotBlank() && it != "<unknown>" }
-        return SongInfo(title, artist, album, item.mediaMetadata.recordingYear)
+        return SongInfo(title, artist, album, item.mediaMetadata.recordingYear, measuredOf(item))
+    }
+
+    /** Ritmo, energía y ánimo medidos de la canción (si ya se analizó), redactados para el guionista. */
+    private fun measuredOf(item: MediaItem): String? {
+        val path = item.mediaMetadata.extras?.getString(MusicLibrary.EXTRA_PATH) ?: return null
+        val p = data.analysis.profiles.value[path] ?: return null
+        val parts = buildList {
+            p.bpm?.takeIf { it > 0 }?.let {
+                val feel = when {
+                    it < 85 -> "lento"
+                    it < 110 -> "medio"
+                    it < 130 -> "movido"
+                    else -> "rápido"
+                }
+                add("ritmo de unos ${it.toInt()} BPM ($feel)")
+            }
+            p.energy?.let { add("energía " + if (it < 0.35f) "suave" else if (it < 0.65f) "media" else "alta") }
+            p.mood?.let { add("ánimo " + com.locudroids.app.ai.Moods.label(it).lowercase()) }
+        }
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(", ")
     }
 
     private companion object {

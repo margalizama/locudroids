@@ -2,6 +2,7 @@ package com.locudroids.app.ai
 
 import android.util.Log
 import com.locudroids.app.data.DjSettings
+import com.locudroids.app.data.NewsClient
 import com.locudroids.app.data.WeatherClient
 import com.locudroids.app.data.WeatherInfo
 import kotlinx.coroutines.CancellationException
@@ -16,12 +17,14 @@ data class ShowContext(
     val first: Boolean,
     val lastSpoke: String?,
     val greetings: List<String>,
+    val news: List<String> = emptyList(),
 )
 
 /** Pide el guion de una canción a Gemini; si no hay clave o falla, arma uno de respaldo. */
 class ShowWriter(
     private val gemini: GeminiClient = GeminiClient(),
     private val weather: WeatherClient = WeatherClient(),
+    private val news: NewsClient = NewsClient(),
 ) {
 
     suspend fun context(
@@ -47,6 +50,7 @@ class ShowWriter(
             first = first,
             lastSpoke = lastSpoke,
             greetings = greetings,
+            news = if (settings.segNews && plan.slots.isNotEmpty()) news.headlines(settings.city) else emptyList(),
         )
     }
 

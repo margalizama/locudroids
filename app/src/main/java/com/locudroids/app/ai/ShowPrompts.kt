@@ -48,7 +48,7 @@ object ShowPrompts {
             "REGLAS:",
             "- Devuelve ÚNICAMENTE JSON válido, sin texto extra, con esta forma: " +
                 "{\"mood\":\"...\",\"energy\":3,\"cues\":[{\"slot\":\"intro\",\"kind\":\"presentacion\",\"lines\":[{\"who\":\"Nombre\",\"style\":\"cómo lo dice\",\"text\":\"lo que dice\"}]}]}",
-            "- \"slot\" es \"intro\", \"mid\" u \"outro\". \"kind\" es uno de: presentacion, clima, saludo, anuncio, promo, horoscopo, efemeride, dedicatoria, charla, jingle.",
+            "- \"slot\" es \"intro\", \"mid\" u \"outro\". \"kind\" es uno de: presentacion, clima, saludo, anuncio, promo, horoscopo, efemeride, dedicatoria, charla, jingle, tema, noticia.",
             "- \"style\" es una indicación breve de cómo se dice (máximo 8 palabras), por ejemplo \"enérgico y rápido, con sonrisa pícara\".",
             "- \"text\" es solo lo que se dice en voz alta: español de México, hablado y natural, sin emojis, sin markdown y sin acotaciones entre paréntesis. " +
                 "Puedes usar muy poco (máximo 2 por corte) las marcas <short pause>, <laugh> o <sigh>.",
@@ -58,6 +58,9 @@ object ShowPrompts {
             "- Presupuesto: ${level.maxWords} palabras por corte como máximo. $dialogue",
             "- Menciona la estación solo de vez en cuando. No repitas estructuras ni muletillas entre cortes; reparte la palabra entre los locutores.",
             "- No inventes datos sobre canciones o artistas: $trivia",
+            "- TEMA Y DATOS: con frecuencia (no en todos los cortes) comenta de qué trata la canción (el tema o significado de la letra: amor, desamor, fiesta, nostalgia, superación...) " +
+                "y, si lo sabes con seguridad, un dato del artista o del álbum. Si no conoces la canción, habla del ánimo, el ritmo y la energía medidos en el audio. " +
+                "Nunca inventes la letra, el significado, años, premios ni anécdotas; ante la duda, mejor comenta el ambiente.",
             "- Anuncios de parodia: marcas totalmente inventadas, nunca marcas reales; nada de hablar mal de personas reales.",
             segments(s),
         ).joinToString("\n")
@@ -78,6 +81,10 @@ object ShowPrompts {
                 "Saludos y dedicatorias disponibles para: ${ctx.greetings.joinToString(", ")}."
             }
         )
+        if (ctx.news.isNotEmpty()) {
+            appendLine("Titulares recientes (solo para comentar con ligereza; no agregues detalles que no estén aquí):")
+            ctx.news.forEachIndexed { i, h -> appendLine("${i + 1}. $h") }
+        }
         ctx.lastSpoke?.let { appendLine("Último locutor que habló: $it (da la palabra a otro cuando puedas).") }
         if (ctx.first && Slot.INTRO in ctx.plan.slots) {
             appendLine("Es el primer corte de la sesión: da la bienvenida a ${station(s)}.")
@@ -122,6 +129,12 @@ object ShowPrompts {
             if (s.segHoroscope) add("horóscopo del día, de broma")
             if (s.allowTrivia) {
                 add("efemérides (\"un día como hoy\"), solo si estás 100% seguro del hecho y de la fecha; si no, omítelo")
+            }
+            if (s.segNews) {
+                add(
+                    "noticias breves (uno o dos titulares de la lista, con tono ligero y de radio, diciendo \"según los titulares\" o similar; " +
+                        "omite tragedias, muertes, crímenes y política partidista, y si ninguno sirve, no hables de noticias)"
+                )
             }
             if (s.segDedications) {
                 add("dedicatorias (a los nombres que se te den o a oyentes inventados claramente cómicos, como \"doña Chela de Iztapalapa\")")

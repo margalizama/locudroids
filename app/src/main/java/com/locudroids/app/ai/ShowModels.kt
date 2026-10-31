@@ -23,6 +23,8 @@ data class SongInfo(
     val artist: String?,
     val album: String? = null,
     val year: Int? = null,
+    /** Lo medido en el audio (ritmo y energía) y el ánimo detectado, ya redactado; null si no se ha analizado. */
+    val measured: String? = null,
 ) {
     /** Forma natural de decirlo en voz alta. */
     fun spoken(): String = if (artist != null) "$title, de $artist" else title
@@ -33,6 +35,7 @@ data class SongInfo(
         artist?.let { add("artista: $it") }
         album?.let { add("álbum: $it") }
         year?.let { add("año: $it") }
+        measured?.let { add("medido en el audio: $it") }
     }.joinToString("; ")
 }
 

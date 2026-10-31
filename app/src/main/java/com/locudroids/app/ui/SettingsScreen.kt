@@ -316,7 +316,10 @@ private fun SettingsForm(
             SwitchRow("Dedicatorias", "A tus nombres o a oyentes inventados", draft.segDedications) { v ->
                 edit { it.copy(segDedications = v) }
             }
-            SwitchRow("Datos y efemérides", "Solo si el modelo está seguro de que son ciertos", draft.allowTrivia) { v ->
+            SwitchRow("Noticias breves", "Titulares recientes de tu ciudad (o de México) comentados con ligereza", draft.segNews) { v ->
+                edit { it.copy(segNews = v) }
+            }
+            SwitchRow("Tema, datos y efemérides", "De qué trata la canción y datos del artista; solo si el modelo está seguro de que son ciertos", draft.allowTrivia) { v ->
                 edit { it.copy(allowTrivia = v) }
             }
         }

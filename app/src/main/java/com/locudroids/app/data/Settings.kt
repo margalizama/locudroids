@@ -39,6 +39,7 @@ data class DjSettings(
     val segPromos: Boolean = true,
     val segHoroscope: Boolean = true,
     val segDedications: Boolean = true,
+    val segNews: Boolean = true,
     val allowTrivia: Boolean = true,
 
     /** Mezcla entre canciones: [MIX_OFF] sin mezcla (gapless), [MIX_CROSSFADE] fundido, [MIX_BEAT] con ritmo (experimental). */
@@ -83,6 +84,7 @@ class SettingsRepository(private val context: Context) {
         val segPromos = booleanPreferencesKey("seg_promos")
         val segHoroscope = booleanPreferencesKey("seg_horoscope")
         val segDedications = booleanPreferencesKey("seg_dedications")
+        val segNews = booleanPreferencesKey("seg_news")
         val trivia = booleanPreferencesKey("allow_trivia")
         val autoAnalyze = booleanPreferencesKey("auto_analyze")
         val mixMode = intPreferencesKey("mix_mode")
@@ -121,6 +123,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.segPromos] = s.segPromos
             prefs[Keys.segHoroscope] = s.segHoroscope
             prefs[Keys.segDedications] = s.segDedications
+            prefs[Keys.segNews] = s.segNews
             prefs[Keys.trivia] = s.allowTrivia
             prefs[Keys.autoAnalyze] = s.autoAnalyze
             prefs[Keys.mixMode] = s.mixMode
@@ -159,6 +162,7 @@ class SettingsRepository(private val context: Context) {
             segPromos = this[Keys.segPromos] ?: d.segPromos,
             segHoroscope = this[Keys.segHoroscope] ?: d.segHoroscope,
             segDedications = this[Keys.segDedications] ?: d.segDedications,
+            segNews = this[Keys.segNews] ?: d.segNews,
             allowTrivia = this[Keys.trivia] ?: d.allowTrivia,
             autoAnalyze = this[Keys.autoAnalyze] ?: d.autoAnalyze,
             btAutoPlay = this[Keys.btAutoPlay] ?: d.btAutoPlay,
