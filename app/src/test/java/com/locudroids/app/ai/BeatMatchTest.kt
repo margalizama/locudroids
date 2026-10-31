@@ -60,8 +60,9 @@ class BeatMatchTest {
             plan, oIn = 80f, pIn = 500f, oOut = 130f, pOut = 500f,
             outPos = 200_000f, minStart = 0f, latencyMs = 0f,
         )
-        // Debe caer en un golpe de la que entra (80 + k*500) y no antes de 0.
         assertTrue(start >= 0)
-        assertEquals(0f, ((start - 80f) % 500f + 500f) % 500f, 1f)
+        // La que sale tiene su próximo golpe en 130 ms; la que entra debe tener un golpe justo entonces.
+        val firstBeatInWallMs = 130f
+        assertEquals(0f, (((start + firstBeatInWallMs - 80f) % 500f) + 500f) % 500f, 1f)
     }
 }
