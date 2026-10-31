@@ -4,6 +4,16 @@ Reproductor de MP3 para Android con **locutores IA privados** estilo radio music
 (mezcla de Exa FM, Radio Reina FM y Los 40 Principales): un programa de radio solo para ti que habla
 **encima de la música**, da la hora y el clima, manda saludos, hace anuncios y presenta las canciones.
 
+## Reproductor (0.4.0)
+
+- **Recuerda** la cola, la canción y el segundo donde te quedaste.
+- **Listas de reproducción** (pestaña LISTAS y ⋮ en cada canción) y **TOP** (más escuchadas / recientes; una canción cuenta al oírla 30 s o la mitad).
+- **DJ por ánimo** (pestaña ÁNIMO): Gemini clasifica el ánimo por título/artista y la app mide BPM y energía en el teléfono; mezclas por ánimo
+  (mismo ritmo, subiendo o bajando) y "DJ: seguir con canciones parecidas".
+- **Auto-mix** (Ajustes → Mezcla): fundido (crossfade) o mezcla con ritmo experimental (iguala el tempo y alinea los golpes).
+- **Bluetooth**: empieza a tocar al conectar los dispositivos que elijas (pide permiso de Bluetooth y, para funcionar con la app cerrada, "sin restricciones" de batería).
+- **Locutores**: 2 (Rafa y Vale), con voz de Gemini y respaldo local; hablan del tema de la canción, datos del artista, ritmo medido y noticias breves (titulares de Google Noticias).
+
 ## Cómo funciona
 
 - Reproduce los MP3 locales del teléfono (MediaStore) con Media3/ExoPlayer, también con la pantalla apagada.
