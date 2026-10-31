@@ -40,12 +40,20 @@ data class DjSettings(
     val segDedications: Boolean = true,
     val allowTrivia: Boolean = true,
 
+    /** Mezcla entre canciones: [MIX_OFF] sin mezcla (gapless), [MIX_CROSSFADE] fundido, [MIX_BEAT] con ritmo (experimental). */
+    val mixMode: Int = MIX_CROSSFADE,
+    /** Duración del fundido en segundos. */
+    val mixSeconds: Int = 6,
+
     /** Analizar la biblioteca (ánimo y ritmo) en segundo plano al abrir la app. */
     val autoAnalyze: Boolean = true,
 
     val announcers: List<Announcer> = Announcer.defaults(),
 ) {
     companion object {
+        const val MIX_OFF = 0
+        const val MIX_CROSSFADE = 1
+        const val MIX_BEAT = 2
         const val DEFAULT_MODEL = "gemini-3.5-flash-lite"
         const val DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"
     }
@@ -71,6 +79,8 @@ class SettingsRepository(private val context: Context) {
         val segDedications = booleanPreferencesKey("seg_dedications")
         val trivia = booleanPreferencesKey("allow_trivia")
         val autoAnalyze = booleanPreferencesKey("auto_analyze")
+        val mixMode = intPreferencesKey("mix_mode")
+        val mixSeconds = intPreferencesKey("mix_seconds")
 
         /** Ajuste de la versión anterior (1-3): se migra a [level]. */
         val legacyIntensity = intPreferencesKey("dj_intensity")
@@ -105,6 +115,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.segDedications] = s.segDedications
             prefs[Keys.trivia] = s.allowTrivia
             prefs[Keys.autoAnalyze] = s.autoAnalyze
+            prefs[Keys.mixMode] = s.mixMode
+            prefs[Keys.mixSeconds] = s.mixSeconds
             s.announcers.take(ANNOUNCERS).forEachIndexed { i, a ->
                 prefs[Keys.announcerName[i]] = a.name
                 prefs[Keys.announcerVoice[i]] = a.voice
@@ -139,6 +151,8 @@ class SettingsRepository(private val context: Context) {
             segDedications = this[Keys.segDedications] ?: d.segDedications,
             allowTrivia = this[Keys.trivia] ?: d.allowTrivia,
             autoAnalyze = this[Keys.autoAnalyze] ?: d.autoAnalyze,
+            mixMode = (this[Keys.mixMode] ?: d.mixMode).coerceIn(DjSettings.MIX_OFF, DjSettings.MIX_BEAT),
+            mixSeconds = (this[Keys.mixSeconds] ?: d.mixSeconds).coerceIn(2, 12),
             announcers = d.announcers.mapIndexed { i, def ->
                 Announcer(
                     name = this[Keys.announcerName[i]] ?: def.name,

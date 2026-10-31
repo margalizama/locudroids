@@ -27,6 +27,7 @@ class PlaybackService : MediaSessionService() {
     private var exoPlayer: ExoPlayer? = null
     private var dj: DjController? = null
     private var tracker: PlaybackTracker? = null
+    private var mix: MixEngine? = null
 
     /** Se restauró la cola guardada y el locutor aún no preparó la canción actual (lo hará al dar play). */
     private var needsFirstPrep = false
@@ -53,26 +54,50 @@ class PlaybackService : MediaSessionService() {
         player.repeatMode = Player.REPEAT_MODE_ALL
         exoPlayer = player
 
-        val controller = DjController(this, player, scope, SettingsRepository(applicationContext))
+        val settingsRepo = SettingsRepository(applicationContext)
+        val bus = VolumeBus(player)
+        val mixer = MixEngine(this, player, bus, scope, settingsRepo)
+        mixer.start()
+        mix = mixer
+
+        val controller = DjController(this, player, bus, scope, settingsRepo)
         dj = controller
 
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val own = mixer.ownTransition
+                if (own) mixer.ownTransition = false
+                // Si el cambio lo hizo la mezcla, los locutores no se cortan.
                 if (mediaItem != null && !restoring) {
                     controller.onTrackStarted(
                         mediaItem,
-                        interrupt = reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+                        interrupt = reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && !own,
                     )
                 }
+                if (!own && reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) mixer.onUserChange()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (!isPlaying) {
-                    controller.onPaused()
-                } else if (needsFirstPrep) {
+                if (isPlaying && needsFirstPrep) {
                     needsFirstPrep = false
                     player.currentMediaItem?.let { controller.onTrackStarted(it, interrupt = false) }
                 }
+            }
+
+            // Pausa de verdad (no un simple "cargando"): los locutores callan y la mezcla se cancela.
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (!playWhenReady) {
+                    controller.onPaused()
+                    mixer.onUserChange()
+                }
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK && !mixer.isMixing && !mixer.ownTransition) mixer.onUserChange()
             }
         })
 
@@ -121,6 +146,8 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         tracker?.stop()
         tracker = null
+        mix?.release()
+        mix = null
         dj?.release()
         dj = null
         mediaSession?.run {

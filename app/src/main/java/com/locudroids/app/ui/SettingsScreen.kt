@@ -223,6 +223,44 @@ private fun SettingsForm(
             }
         }
 
+        SectionCard("MEZCLA ENTRE CANCIONES") {
+            ChoiceRow(
+                draft.mixMode == DjSettings.MIX_OFF,
+                "Sin mezcla",
+                "Una canción sigue a la otra sin pausa",
+            ) { edit { it.copy(mixMode = DjSettings.MIX_OFF) } }
+            ChoiceRow(
+                draft.mixMode == DjSettings.MIX_CROSSFADE,
+                "Fundido (crossfade)",
+                "La canción que termina baja mientras entra la siguiente",
+            ) { edit { it.copy(mixMode = DjSettings.MIX_CROSSFADE) } }
+            ChoiceRow(
+                draft.mixMode == DjSettings.MIX_BEAT,
+                "Mezcla con ritmo (experimental)",
+                "Iguala el tempo y alinea los golpes como un DJ; si no logra medir el ritmo, hace un fundido normal",
+            ) { edit { it.copy(mixMode = DjSettings.MIX_BEAT) } }
+            if (draft.mixMode != DjSettings.MIX_OFF) {
+                Text("Duración del fundido: ${draft.mixSeconds} s", color = Tech.TextMain)
+                Slider(
+                    value = draft.mixSeconds.toFloat(),
+                    onValueChange = { v -> edit { it.copy(mixSeconds = v.roundToInt().coerceIn(2, 12)) } },
+                    valueRange = 2f..12f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Tech.Cyan,
+                        activeTrackColor = Tech.Cyan,
+                        inactiveTrackColor = Color(0x33FFFFFF),
+                    ),
+                )
+                if (draft.mixMode == DjSettings.MIX_BEAT) {
+                    Text(
+                        "Con ritmo el fundido dura al menos 8 s. Funciona mejor si ya analizaste tu música (pestaña ÁNIMO).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Tech.TextDim,
+                    )
+                }
+            }
+        }
+
         SectionCard("BIBLIOTECA") {
             SwitchRow(
                 "Analizar mi música al abrir la app",

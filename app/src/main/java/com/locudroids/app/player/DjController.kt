@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 class DjController(
     context: Context,
     private val player: Player,
+    private val volume: VolumeBus,
     private val scope: CoroutineScope,
     private val settingsRepo: SettingsRepository,
 ) {
@@ -297,7 +298,7 @@ class DjController(
                     speaking = false
                     DjBus.setSpeaking(false)
                     DjBus.setOnAir(null)
-                    player.volume = 1f
+                    volume.duck = 1f
                 }
             }
         }
@@ -325,15 +326,15 @@ class DjController(
         speaking = false
         DjBus.setSpeaking(false)
         DjBus.setOnAir(null)
-        player.volume = 1f
+        volume.duck = 1f
     }
 
     /** Sube o baja el volumen de la música poco a poco (sin saltos bruscos). */
     private suspend fun fadeTo(target: Float, durationMs: Long) {
-        val start = player.volume
+        val start = volume.duck
         val steps = 10
         for (i in 1..steps) {
-            player.volume = start + (target - start) * i / steps
+            volume.duck = start + (target - start) * i / steps
             delay(durationMs / steps)
         }
     }
