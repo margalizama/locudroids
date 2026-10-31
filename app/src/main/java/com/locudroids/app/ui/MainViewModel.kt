@@ -15,6 +15,10 @@ import com.locudroids.app.ai.Slot
 import com.locudroids.app.ai.SongInfo
 import com.locudroids.app.ai.TrackPlan
 import com.locudroids.app.ai.stripTags
+import com.locudroids.app.ai.MoodMixer
+import com.locudroids.app.ai.Moods
+import com.locudroids.app.ai.SongProfile
+import com.locudroids.app.data.AnalysisState
 import com.locudroids.app.data.AppData
 import com.locudroids.app.data.ArtLoader
 import com.locudroids.app.data.Playlist
@@ -37,6 +41,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -55,6 +60,10 @@ data class PlaybackUi(
     val durationMs: Long = 0L,
     val shuffle: Boolean = false,
 )
+
+enum class MixOrder { SIMILAR, UP, DOWN }
+
+private const val MIX_LIMIT = 60
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -86,6 +95,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         StatsRepository.recent(st, 100).mapNotNull { byPath[it] }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val profiles: StateFlow<Map<String, SongProfile>> = data.analysis.profiles
+    val analysisState: StateFlow<AnalysisState> = data.analyzer.state
+
     private val _browsePath = MutableStateFlow<String?>(null)
 
     /** Carpeta que se está viendo en el explorador. */
@@ -95,6 +107,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _ui = MutableStateFlow(PlaybackUi())
     val ui: StateFlow<PlaybackUi> = _ui.asStateFlow()
+
+    /** Ritmo, energía y ánimo de la canción que suena (si ya se analizó). */
+    val nowProfile: StateFlow<SongProfile?> by lazy {
+        combine(_ui.map { it.mediaId }.distinctUntilChanged(), _songs, data.analysis.profiles) { id, songs, profiles ->
+            val song = songs.firstOrNull { it.id.toString() == id }
+            song?.let { profiles[it.path] }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }
 
     private val _artwork = MutableStateFlow<ImageBitmap?>(null)
     val artwork: StateFlow<ImageBitmap?> = _artwork.asStateFlow()
@@ -177,7 +197,55 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun loadLibrary() {
         viewModelScope.launch {
             _songs.value = MusicLibrary.scan(getApplication())
+            val s = settingsRepo.current()
+            if (s.autoAnalyze && _songs.value.isNotEmpty()) data.analyzer.start(_songs.value, s)
         }
+    }
+
+    // ---------------------------------------------------------------- DJ por ánimo
+
+    fun startAnalysis() {
+        viewModelScope.launch { data.analyzer.start(_songs.value, settingsRepo.current()) }
+    }
+
+    fun stopAnalysis() = data.analyzer.stop()
+
+    fun pendingAnalysis(): Int = data.analyzer.pending(_songs.value)
+
+    /** Arma una mezcla con las canciones de un ánimo: parecidas entre sí, o subiendo / bajando la energía. */
+    fun playMood(mood: String, order: MixOrder) {
+        val byPath = songsByPath.value
+        val prof = data.analysis.profiles.value
+        val pool = prof.filter { it.value.mood == mood && it.key in byPath }.keys.toList()
+        if (pool.isEmpty()) return
+        val ordered = when (order) {
+            MixOrder.SIMILAR -> MoodMixer.chain(null, pool, prof, MIX_LIMIT)
+            MixOrder.UP -> MoodMixer.ramp(pool, prof, up = true).take(MIX_LIMIT)
+            MixOrder.DOWN -> MoodMixer.ramp(pool, prof, up = false).take(MIX_LIMIT)
+        }
+        playQueue(ordered.mapNotNull { byPath[it] }, 0, shuffle = false)
+    }
+
+    /** DJ infinito: la canción que suena sigue y detrás van otras parecidas en ritmo, energía y ánimo. */
+    fun djFromCurrent() {
+        val c = controller ?: return
+        val id = c.currentMediaItem?.mediaId ?: return
+        val song = _songs.value.firstOrNull { it.id.toString() == id } ?: return
+        val chain = MoodMixer.chain(song.path, songsByPath.value.keys.toList(), data.analysis.profiles.value, MIX_LIMIT)
+            .drop(1)
+            .mapNotNull { songsByPath.value[it]?.toMediaItem() }
+        if (chain.isEmpty()) return
+        c.shuffleModeEnabled = false
+        val after = c.currentMediaItemIndex + 1
+        if (after < c.mediaItemCount) c.removeMediaItems(after, c.mediaItemCount)
+        c.addMediaItems(chain)
+    }
+
+    /** Empieza una radio DJ desde [song]. */
+    fun djFrom(song: Song) {
+        val prof = data.analysis.profiles.value
+        val order = MoodMixer.chain(song.path, songsByPath.value.keys.toList(), prof, MIX_LIMIT)
+        playQueue(order.mapNotNull { songsByPath.value[it] }, 0, shuffle = false)
     }
 
     fun openFolder(path: String) {

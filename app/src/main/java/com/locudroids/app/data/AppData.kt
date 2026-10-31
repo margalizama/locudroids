@@ -14,6 +14,8 @@ class AppData private constructor(context: Context) {
     val playlists = PlaylistRepository(File(dir, "playlists.json"), io)
     val stats = StatsRepository(File(dir, "stats.json"), io)
     val session = SessionStore(File(dir, "queue.json"), File(dir, "position.json"), io)
+    val analysis = AnalysisRepository(File(dir, "analysis.json"), io)
+    val analyzer = AnalysisRunner(context.applicationContext, analysis, io)
 
     companion object {
         @Volatile

@@ -54,6 +54,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.locudroids.app.ai.Moods
+import kotlin.math.roundToInt
 
 @Composable
 fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
@@ -65,6 +67,7 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     val onAir by vm.djOnAir.collectAsStateWithLifecycle()
     val mood by vm.djMood.collectAsStateWithLifecycle()
     val voiceInfo by vm.djVoiceInfo.collectAsStateWithLifecycle()
+    val profile by vm.nowProfile.collectAsStateWithLifecycle()
 
     val djEnabled = settings?.djEnabled ?: true
     val accent = if (speaking) Tech.Magenta else Tech.Cyan
@@ -118,6 +121,15 @@ fun PlayerScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
             )
+        }
+
+        profile?.let { p ->
+            val parts = listOfNotNull(
+                p.bpm?.takeIf { it > 0 }?.let { "${it.roundToInt()} BPM" },
+                p.mood?.let { Moods.label(it) },
+                p.energy?.let { "ENERGÍA ${(it * 100).roundToInt()}%" },
+            )
+            if (parts.isNotEmpty()) TechLabel(parts.joinToString(" · ").uppercase(), color = Tech.Violet)
         }
 
         // Barra de progreso

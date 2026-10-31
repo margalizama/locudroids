@@ -80,7 +80,7 @@ fun LibraryScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
             edgePadding = 8.dp,
             divider = {},
         ) {
-            listOf("CARPETAS", "TODAS", "LISTAS", "TOP").forEachIndexed { index, label ->
+            listOf("CARPETAS", "TODAS", "LISTAS", "TOP", "ÁNIMO").forEachIndexed { index, label ->
                 Tab(
                     selected = tab == index,
                     onClick = { tab = index },
@@ -102,7 +102,8 @@ fun LibraryScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
             0 -> FoldersTab(vm, browser, ui.mediaId, actionsFor, Modifier.fillMaxSize())
             1 -> AllSongsTab(vm, songs, ui.mediaId, actionsFor, Modifier.fillMaxSize())
             2 -> PlaylistsTab(vm, ui.mediaId, onAddToList = { addFor = it }, modifier = Modifier.fillMaxSize())
-            else -> TopTab(vm, ui.mediaId, onAddToList = { addFor = it }, modifier = Modifier.fillMaxSize())
+            3 -> TopTab(vm, ui.mediaId, onAddToList = { addFor = it }, modifier = Modifier.fillMaxSize())
+            else -> MoodTab(vm, Modifier.fillMaxSize())
         }
     }
 }

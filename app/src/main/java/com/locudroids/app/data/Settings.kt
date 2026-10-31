@@ -44,6 +44,9 @@ data class DjSettings(
     val segDedications: Boolean = true,
     val allowTrivia: Boolean = true,
 
+    /** Analizar la biblioteca (ánimo y ritmo) en segundo plano al abrir la app. */
+    val autoAnalyze: Boolean = true,
+
     val announcers: List<Announcer> = Announcer.defaults(),
 ) {
     companion object {
@@ -79,6 +82,7 @@ class SettingsRepository(private val context: Context) {
         val segHoroscope = booleanPreferencesKey("seg_horoscope")
         val segDedications = booleanPreferencesKey("seg_dedications")
         val trivia = booleanPreferencesKey("allow_trivia")
+        val autoAnalyze = booleanPreferencesKey("auto_analyze")
 
         /** Ajuste de la versión anterior (1-3): se migra a [level]. */
         val legacyIntensity = intPreferencesKey("dj_intensity")
@@ -114,6 +118,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.segHoroscope] = s.segHoroscope
             prefs[Keys.segDedications] = s.segDedications
             prefs[Keys.trivia] = s.allowTrivia
+            prefs[Keys.autoAnalyze] = s.autoAnalyze
             s.announcers.take(ANNOUNCERS).forEachIndexed { i, a ->
                 prefs[Keys.announcerName[i]] = a.name
                 prefs[Keys.announcerVoice[i]] = a.voice
@@ -152,6 +157,7 @@ class SettingsRepository(private val context: Context) {
             segHoroscope = this[Keys.segHoroscope] ?: d.segHoroscope,
             segDedications = this[Keys.segDedications] ?: d.segDedications,
             allowTrivia = this[Keys.trivia] ?: d.allowTrivia,
+            autoAnalyze = this[Keys.autoAnalyze] ?: d.autoAnalyze,
             announcers = d.announcers.mapIndexed { i, def ->
                 Announcer(
                     name = this[Keys.announcerName[i]] ?: def.name,

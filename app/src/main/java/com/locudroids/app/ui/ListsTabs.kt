@@ -54,6 +54,7 @@ fun songActions(vm: MainViewModel, song: Song, onAddToList: (Song) -> Unit): Lis
     SongAction("Reproducir a continuación") { vm.playNext(song) },
     SongAction("Agregar a la cola") { vm.addToQueue(song) },
     SongAction("Agregar a una lista…") { onAddToList(song) },
+    SongAction("Radio DJ desde esta canción") { vm.djFrom(song) },
 )
 
 @Composable

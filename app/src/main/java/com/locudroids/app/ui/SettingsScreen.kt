@@ -223,6 +223,14 @@ private fun SettingsForm(
             }
         }
 
+        SectionCard("BIBLIOTECA") {
+            SwitchRow(
+                "Analizar mi música al abrir la app",
+                "Mide ritmo y energía en el teléfono y pide el ánimo a Gemini; sirve para el DJ por ánimo",
+                draft.autoAnalyze,
+            ) { v -> edit { it.copy(autoAnalyze = v) } }
+        }
+
         SectionCard("LOCUTORES") {
             draft.announcers.forEachIndexed { index, announcer ->
                 if (index > 0) HorizontalDivider(color = Tech.GlassBorder)
