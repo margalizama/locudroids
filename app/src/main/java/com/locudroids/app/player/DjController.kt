@@ -110,7 +110,7 @@ class DjController(
 
     init {
         scope.launch { settingsRepo.flow.collect { settings = it } }
-        scope.launch { director.warmUp(settingsRepo.current()) }
+        scope.launch { director.warmUp() }
         scope.launch { DjBus.skip.collect { cancelTalk() } }
         scope.launch {
             while (isActive) {
@@ -286,7 +286,7 @@ class DjController(
         talkJob = scope.launch {
             try {
                 fadeTo(DUCK_VOLUME, 350)
-                director.play(clip, s)
+                director.play(clip)
                 fadeTo(1f, 700)
             } catch (e: CancellationException) {
                 throw e
@@ -307,7 +307,7 @@ class DjController(
         val base = when (clip.source) {
             VoiceSource.GEMINI -> "Voz: Gemini"
             VoiceSource.LOCAL -> "Voz: local (neuronal)"
-            VoiceSource.ANDROID -> "Voz: Android"
+            VoiceSource.NONE -> "Sin voz"
         }
         return if (clip.note != null) "$base · ${clip.note}" else base
     }
@@ -322,7 +322,6 @@ class DjController(
         talkGeneration++
         talkJob?.cancel()
         talkJob = null
-        director.stop()
         speaking = false
         DjBus.setSpeaking(false)
         DjBus.setOnAir(null)

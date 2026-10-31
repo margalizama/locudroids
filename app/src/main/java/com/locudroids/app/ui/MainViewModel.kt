@@ -398,13 +398,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     val name = when (clip.source) {
                         VoiceSource.GEMINI -> "Gemini"
                         VoiceSource.LOCAL -> "local (neuronal)"
-                        VoiceSource.ANDROID -> "Android (robótica)"
+                        VoiceSource.NONE -> "ninguna"
                     }
                     "\nVoz: $name." + (clip.note?.let { "\n($it)" } ?: "")
                 }
             }
             _testStatus.value = script + voice
-            if (!clip.skip) testDirector.play(clip, s)
+            if (!clip.skip) testDirector.play(clip)
         }
     }
 

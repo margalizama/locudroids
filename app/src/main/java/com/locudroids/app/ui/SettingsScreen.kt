@@ -312,27 +312,13 @@ private fun SettingsForm(
         }
 
         SectionCard("VOCES") {
-            ChoiceRow(
-                draft.voiceEngine == DjSettings.ENGINE_AUTO,
-                "Automático (recomendado)",
-                "Gemini cuando responde; si falla o se acaba la cuota, voz neuronal local",
-            ) { edit { it.copy(voiceEngine = DjSettings.ENGINE_AUTO) } }
-            ChoiceRow(
-                draft.voiceEngine == DjSettings.ENGINE_LOCAL,
-                "Solo voz local",
-                "Sin internet ni cuotas; el guion sí usa Gemini",
-            ) { edit { it.copy(voiceEngine = DjSettings.ENGINE_LOCAL) } }
-            ChoiceRow(
-                draft.voiceEngine == DjSettings.ENGINE_GEMINI,
-                "Solo Gemini",
-                "Si falla, el corte se omite",
-            ) { edit { it.copy(voiceEngine = DjSettings.ENGINE_GEMINI) } }
-            SwitchRow(
-                "Último recurso: voz de Android",
-                "Suena robótica. Apagado: si no hay otra voz, el corte se omite",
-                draft.androidFallback,
-            ) { v -> edit { it.copy(androidFallback = v) } }
-            Text("Velocidad de la voz: ${"%.1f".format(draft.speechRate)}x", color = Tech.TextMain)
+            Text(
+                "Gemini habla primero. Si falla o se acaba la cuota (HTTP 429), Gemini descansa 10 minutos y los locutores " +
+                    "usan la voz local del teléfono, sin internet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Tech.TextDim,
+            )
+            Text("Velocidad de la voz local: ${"%.1f".format(draft.speechRate)}x", color = Tech.TextMain)
             Slider(
                 value = draft.speechRate,
                 onValueChange = { v -> edit { it.copy(speechRate = (v * 10).roundToInt() / 10f) } },

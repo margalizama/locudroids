@@ -7,7 +7,7 @@ import org.junit.Test
 
 class ShowParserTest {
 
-    private val names = listOf("Rafa", "Vale", "Chuy")
+    private val names = listOf("Rafa", "Vale")
     private val all = setOf(Slot.INTRO, Slot.MID, Slot.OUTRO)
 
     private fun json(energy: Int = 4) = """
@@ -15,7 +15,7 @@ class ShowParserTest {
           {"slot":"intro","kind":"presentacion","lines":[
             {"who":"rafa","style":"enérgico","text":"¡Arrancamos con **esta** canción!"}]},
           {"slot":"mid","kind":"anuncio","lines":[
-            {"who":"Chuy","style":"burlón","text":"Y ahora un comercial."},
+            {"who":"Rafa","style":"burlón","text":"Y ahora un comercial."},
             {"who":"Nadie","style":"","text":"¿Quién habla?"}]},
           {"slot":"outro","kind":"presentacion","lines":[
             {"who":"Vale","text":"Sigue lo mejor."}]}

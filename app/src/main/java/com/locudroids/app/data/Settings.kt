@@ -20,11 +20,7 @@ data class DjSettings(
     val geminiApiKey: String = "",
     val geminiModel: String = DEFAULT_MODEL,
     val ttsModel: String = DEFAULT_TTS_MODEL,
-    /** Qué voz usar: [ENGINE_AUTO] Gemini y, si no puede, la voz local; [ENGINE_LOCAL] solo la local; [ENGINE_GEMINI] solo Gemini. */
-    val voiceEngine: Int = ENGINE_AUTO,
-    /** Último recurso, si no hay otra voz disponible: true = voz de Android (robótica); false = omitir el corte. */
-    val androidFallback: Boolean = false,
-    /** Velocidad de las voces locales y de Android (1.0 = normal). */
+    /** Velocidad de la voz local (1.0 = normal). */
     val speechRate: Float = 1.0f,
 
     val listenerName: String = "Margaro",
@@ -52,9 +48,6 @@ data class DjSettings(
     companion object {
         const val DEFAULT_MODEL = "gemini-3.5-flash-lite"
         const val DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"
-        const val ENGINE_AUTO = 0
-        const val ENGINE_LOCAL = 1
-        const val ENGINE_GEMINI = 2
     }
 }
 
@@ -65,11 +58,6 @@ class SettingsRepository(private val context: Context) {
         val apiKey = stringPreferencesKey("gemini_api_key")
         val model = stringPreferencesKey("gemini_model")
         val ttsModel = stringPreferencesKey("tts_model")
-        val voiceEngine = intPreferencesKey("voice_engine")
-
-        /** Ajuste de la versión anterior: false = sin voz de Gemini, se migra a [voiceEngine]. */
-        val legacyGeminiVoice = booleanPreferencesKey("gemini_voice")
-        val androidFallback = booleanPreferencesKey("android_fallback")
         val rate = floatPreferencesKey("speech_rate")
         val listener = stringPreferencesKey("listener_name")
         val station = stringPreferencesKey("station_name")
@@ -104,8 +92,6 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.apiKey] = s.geminiApiKey
             prefs[Keys.model] = s.geminiModel
             prefs[Keys.ttsModel] = s.ttsModel
-            prefs[Keys.voiceEngine] = s.voiceEngine
-            prefs[Keys.androidFallback] = s.androidFallback
             prefs[Keys.rate] = s.speechRate
             prefs[Keys.listener] = s.listenerName
             prefs[Keys.station] = s.stationName
@@ -140,11 +126,6 @@ class SettingsRepository(private val context: Context) {
             geminiApiKey = this[Keys.apiKey] ?: d.geminiApiKey,
             geminiModel = this[Keys.model] ?: d.geminiModel,
             ttsModel = this[Keys.ttsModel] ?: d.ttsModel,
-            voiceEngine = (
-                this[Keys.voiceEngine]
-                    ?: if (this[Keys.legacyGeminiVoice] == false) DjSettings.ENGINE_LOCAL else d.voiceEngine
-                ).coerceIn(DjSettings.ENGINE_AUTO, DjSettings.ENGINE_GEMINI),
-            androidFallback = this[Keys.androidFallback] ?: d.androidFallback,
             speechRate = this[Keys.rate] ?: d.speechRate,
             listenerName = this[Keys.listener] ?: d.listenerName,
             stationName = this[Keys.station] ?: d.stationName,
@@ -162,14 +143,21 @@ class SettingsRepository(private val context: Context) {
                 Announcer(
                     name = this[Keys.announcerName[i]] ?: def.name,
                     voice = this[Keys.announcerVoice[i]] ?: def.voice,
-                    persona = this[Keys.announcerPersona[i]] ?: def.persona,
+                    persona = migratePersona(i, this[Keys.announcerPersona[i]], def.persona),
                     localVoice = this[Keys.announcerLocal[i]] ?: def.localVoice,
                 )
             },
         )
     }
 
+    /** Las personalidades guardadas por versiones con 3 locutores mencionaban a Chuy, que ya no está. */
+    private fun migratePersona(index: Int, stored: String?, default: String): String {
+        if (stored == null) return default
+        if (index == 0 && stored.startsWith("El conductor del programa") && !stored.contains("parodia")) return default
+        return stored.replace("Chuy", "Rafa")
+    }
+
     private companion object {
-        const val ANNOUNCERS = 3
+        const val ANNOUNCERS = 2
     }
 }

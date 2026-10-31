@@ -15,22 +15,16 @@ data class Announcer(
                 name = "Rafa",
                 voice = "Fenrir",
                 persona = "El conductor del programa. Enérgico y carismático, con voz de locutor de éxitos. " +
-                    "Lleva el ritmo, presenta las canciones con actitud, grita las frases de la estación y siempre tiene un comentario de fiesta.",
+                    "Lleva el ritmo, presenta las canciones con actitud, grita las frases de la estación, hace los anuncios de parodia " +
+                    "y los horóscopos locos, y siempre tiene un comentario de fiesta.",
                 localVoice = LocalVoices.ALEX,
             ),
             Announcer(
                 name = "Vale",
                 voice = "Aoede",
                 persona = "La pícara. Coqueta, rápida y sarcástica. Lanza albures y dobles sentidos con una sonrisa, " +
-                    "manda saludos atrevidos y le encanta molestar a Chuy.",
+                    "manda saludos atrevidos y le encanta molestar a Rafa.",
                 localVoice = LocalVoices.DORA,
-            ),
-            Announcer(
-                name = "Chuy",
-                voice = "Algenib",
-                persona = "El bromista. Voz grave y rasposa, humor de barrio y de cantina. " +
-                    "Hace los anuncios de parodia, los horóscopos locos y las dedicatorias absurdas, y se defiende de los ataques de Vale.",
-                localVoice = LocalVoices.SANTA,
             ),
         )
     }
