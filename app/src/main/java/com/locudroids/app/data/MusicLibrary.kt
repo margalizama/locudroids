@@ -34,7 +34,10 @@ data class Song(
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setRecordingYear(year)
-                .setExtras(Bundle().apply { putLong(MusicLibrary.EXTRA_DURATION, durationMs) })
+                .setExtras(Bundle().apply {
+                    putLong(MusicLibrary.EXTRA_DURATION, durationMs)
+                    putString(MusicLibrary.EXTRA_PATH, path)
+                })
                 .build()
         )
         .build()
@@ -45,6 +48,9 @@ object MusicLibrary {
 
     /** Clave en los extras del MediaItem con la duración de la canción (ms). */
     const val EXTRA_DURATION = "durationMs"
+
+    /** Clave en los extras del MediaItem con la ruta del archivo (identifica la canción en listas y estadísticas). */
+    const val EXTRA_PATH = "path"
 
     private val collection: Uri
         get() = if (Build.VERSION.SDK_INT >= 29) {

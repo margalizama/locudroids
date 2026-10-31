@@ -15,7 +15,11 @@ import com.locudroids.app.ai.Slot
 import com.locudroids.app.ai.SongInfo
 import com.locudroids.app.ai.TrackPlan
 import com.locudroids.app.ai.stripTags
+import com.locudroids.app.data.AppData
 import com.locudroids.app.data.ArtLoader
+import com.locudroids.app.data.Playlist
+import com.locudroids.app.data.SongStat
+import com.locudroids.app.data.StatsRepository
 import com.locudroids.app.data.BrowserState
 import com.locudroids.app.data.DjSettings
 import com.locudroids.app.data.Folders
@@ -62,6 +66,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
+
+    private val data = AppData.get(app)
+
+    val playlists: StateFlow<List<Playlist>> = data.playlists.lists
+    val stats: StateFlow<Map<String, SongStat>> = data.stats.stats
+
+    private val songsByPath: StateFlow<Map<String, Song>> = _songs
+        .map { list -> list.associateBy { it.path } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** Las canciones más escuchadas, de mayor a menor. */
+    val topSongs: StateFlow<List<Song>> = combine(songsByPath, data.stats.stats) { byPath, st ->
+        StatsRepository.top(st, 100).mapNotNull { byPath[it] }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Lo último que se escuchó. */
+    val recentSongs: StateFlow<List<Song>> = combine(songsByPath, data.stats.stats) { byPath, st ->
+        StatsRepository.recent(st, 100).mapNotNull { byPath[it] }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _browsePath = MutableStateFlow<String?>(null)
 
@@ -216,6 +239,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleShuffle() {
         val c = controller ?: return
         c.shuffleModeEnabled = !c.shuffleModeEnabled
+    }
+
+    // ---------------------------------------------------------------- listas de reproducción
+
+    fun createPlaylist(name: String, first: Song? = null): Playlist =
+        data.playlists.create(name, listOfNotNull(first?.path))
+
+    fun renamePlaylist(id: String, name: String) = data.playlists.rename(id, name)
+
+    fun deletePlaylist(id: String) = data.playlists.delete(id)
+
+    fun addToPlaylist(id: String, songs: List<Song>) = data.playlists.add(id, songs.map { it.path })
+
+    fun removeFromPlaylist(id: String, song: Song) = data.playlists.removePath(id, song.path)
+
+    /** Canciones de una lista que todavía existen en el teléfono, en su orden. */
+    fun songsOf(playlist: Playlist): List<Song> = playlist.paths.mapNotNull { songsByPath.value[it] }
+
+    fun playPlaylist(playlist: Playlist, shuffle: Boolean) {
+        val queue = songsOf(playlist)
+        if (queue.isEmpty()) return
+        playQueue(queue, if (shuffle) queue.indices.random() else 0, shuffle)
+    }
+
+    /** Pone la canción justo después de la que suena. */
+    fun playNext(song: Song) {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0) {
+            playQueue(listOf(song), 0)
+        } else {
+            c.addMediaItem(c.currentMediaItemIndex + 1, song.toMediaItem())
+        }
+    }
+
+    /** Agrega la canción al final de la cola. */
+    fun addToQueue(song: Song) {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0) playQueue(listOf(song), 0) else c.addMediaItem(song.toMediaItem())
     }
 
     // ---------------------------------------------------------------- locutores y ajustes

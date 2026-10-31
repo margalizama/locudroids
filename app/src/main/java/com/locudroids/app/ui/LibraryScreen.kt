@@ -31,8 +31,8 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,6 +56,7 @@ import com.locudroids.app.data.Song
 @Composable
 fun LibraryScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     var tab by rememberSaveable { mutableStateOf(0) }
+    var addFor by remember { mutableStateOf<Song?>(null) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val songs by vm.songs.collectAsStateWithLifecycle()
     val browser by vm.browser.collectAsStateWithLifecycle()
@@ -72,23 +73,24 @@ fun LibraryScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
             letterSpacing = 5.sp,
             color = Tech.TextMain,
         )
-        TabRow(
+        ScrollableTabRow(
             selectedTabIndex = tab,
             containerColor = Color.Transparent,
             contentColor = Tech.Cyan,
+            edgePadding = 8.dp,
             divider = {},
         ) {
-            Tab(
-                selected = tab == 0,
-                onClick = { tab = 0 },
-                text = { TechLabel("CARPETAS", color = if (tab == 0) Tech.Cyan else Tech.TextDim) },
-            )
-            Tab(
-                selected = tab == 1,
-                onClick = { tab = 1 },
-                text = { TechLabel("TODAS", color = if (tab == 1) Tech.Cyan else Tech.TextDim) },
-            )
+            listOf("CARPETAS", "TODAS", "LISTAS", "TOP").forEachIndexed { index, label ->
+                Tab(
+                    selected = tab == index,
+                    onClick = { tab = index },
+                    text = { TechLabel(label, color = if (tab == index) Tech.Cyan else Tech.TextDim) },
+                )
+            }
         }
+
+        addFor?.let { AddToListDialog(vm, it, onDismiss = { addFor = null }) }
+        val actionsFor: (Song) -> List<SongAction> = { song -> songActions(vm, song) { addFor = it } }
 
         if (songs.isEmpty()) {
             Text(
@@ -96,10 +98,11 @@ fun LibraryScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(24.dp),
                 color = Tech.TextDim,
             )
-        } else if (tab == 0) {
-            FoldersTab(vm, browser, ui.mediaId, Modifier.fillMaxSize())
-        } else {
-            AllSongsTab(vm, songs, ui.mediaId, Modifier.fillMaxSize())
+        } else when (tab) {
+            0 -> FoldersTab(vm, browser, ui.mediaId, actionsFor, Modifier.fillMaxSize())
+            1 -> AllSongsTab(vm, songs, ui.mediaId, actionsFor, Modifier.fillMaxSize())
+            2 -> PlaylistsTab(vm, ui.mediaId, onAddToList = { addFor = it }, modifier = Modifier.fillMaxSize())
+            else -> TopTab(vm, ui.mediaId, onAddToList = { addFor = it }, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -109,6 +112,7 @@ private fun FoldersTab(
     vm: MainViewModel,
     browser: BrowserState,
     currentId: String?,
+    actionsFor: (Song) -> List<SongAction>,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -195,6 +199,7 @@ private fun FoldersTab(
                     song = song,
                     isCurrent = currentId == song.id.toString(),
                     onClick = { vm.playQueue(browser.songs, index) },
+                    actions = actionsFor(song),
                 )
                 HorizontalDivider(color = Tech.GlassBorder)
             }
@@ -234,6 +239,7 @@ private fun AllSongsTab(
     vm: MainViewModel,
     songs: List<Song>,
     currentId: String?,
+    actionsFor: (Song) -> List<SongAction>,
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -265,6 +271,7 @@ private fun AllSongsTab(
                     song = song,
                     isCurrent = currentId == song.id.toString(),
                     onClick = { vm.playQueue(filtered, index) },
+                    actions = actionsFor(song),
                 )
                 HorizontalDivider(color = Tech.GlassBorder)
             }

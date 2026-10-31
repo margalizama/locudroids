@@ -23,7 +23,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -126,8 +133,17 @@ fun OnAirBadge(onAir: Boolean) {
     }
 }
 
+/** Una acción del menú ⋮ de una canción. */
+class SongAction(val label: String, val onClick: () -> Unit)
+
 @Composable
-fun SongRow(song: Song, isCurrent: Boolean, onClick: () -> Unit) {
+fun SongRow(
+    song: Song,
+    isCurrent: Boolean,
+    onClick: () -> Unit,
+    actions: List<SongAction> = emptyList(),
+    detail: String? = null,
+) {
     ListItem(
         headlineContent = {
             Text(
@@ -153,12 +169,33 @@ fun SongRow(song: Song, isCurrent: Boolean, onClick: () -> Unit) {
             )
         },
         trailingContent = {
-            Text(
-                formatTime(song.durationMs),
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                color = Tech.TextDim,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    detail ?: formatTime(song.durationMs),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    color = Tech.TextDim,
+                )
+                if (actions.isNotEmpty()) {
+                    var open by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { open = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones", tint = Tech.TextDim)
+                        }
+                        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                            actions.forEach { a ->
+                                DropdownMenuItem(
+                                    text = { Text(a.label) },
+                                    onClick = {
+                                        open = false
+                                        a.onClick()
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier
